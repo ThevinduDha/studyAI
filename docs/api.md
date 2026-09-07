@@ -1,0 +1,131 @@
+# StudyAI — REST API Specification
+
+This document details the planned REST API routes, HTTP verbs, payload structures, and response conventions for **StudyAI**.
+
+> [!NOTE]
+> **Phase 1 Baseline**: Only `GET /api/health` is active in this phase. The remaining endpoints will be incrementally developed in future phases.
+
+---
+
+## 1. Global API Conventions
+
+- **Base URL**: `/api`
+- **Content Type**: `application/json` (except file upload endpoints: `multipart/form-data`)
+- **Authentication**: Bearer Token in `Authorization` header (`Bearer <JWT>`) for protected routes.
+- **Standard Success Envelope**:
+  ```json
+  {
+    "success": true,
+    "data": {},
+    "message": "Optional descriptive status"
+  }
+  ```
+- **Standard Error Envelope**:
+  ```json
+  {
+    "success": false,
+    "error": {
+      "code": "BAD_REQUEST",
+      "message": "Validation failed on email field"
+    }
+  }
+  ```
+
+---
+
+## 2. Active Endpoints (Phase 1 & Phase 2)
+
+### 2.1 System Health
+- **`GET /api/health`**
+  - **Auth**: Public
+  - **Description**: Returns server operational status and server timestamp.
+  - **Response `200 OK`**:
+    ```json
+    {
+      "status": "ok",
+      "message": "StudyAI API is running",
+      "timestamp": "2026-09-07T18:45:00.000Z",
+      "environment": "development"
+    }
+    ```
+
+### 2.2 Authentication (`/api/auth`)
+- **`POST /api/auth/register`**
+  - **Auth**: Public
+  - **Body**: `{ "name": "...", "email": "...", "password": "...", "role": "student" | "admin" }`
+  - **Response `201 Created`**: Returns `{ success: true, data: { user, token } }`
+- **`POST /api/auth/login`**
+  - **Auth**: Public
+  - **Body**: `{ "email": "...", "password": "..." }`
+  - **Response `200 OK`**: Returns `{ success: true, data: { user, token } }`
+- **`GET /api/auth/me`**
+  - **Auth**: `Bearer <token>` (Student or Admin)
+  - **Response `200 OK`**: Returns `{ success: true, data: { user } }` (populated enrolled modules)
+
+### 2.3 Course Modules (`/api/modules`)
+- **`GET /api/modules`**
+  - **Auth**: `Bearer <token>` (Student or Admin)
+  - **Query Params**: `search` (optional)
+  - **Response `200 OK`**: Returns `{ success: true, data: { modules: [...] } }`
+- **`GET /api/modules/enrolled`**
+  - **Auth**: `Bearer <token>` (Student only)
+  - **Response `200 OK`**: Returns `{ success: true, data: { enrolledModules: [...] } }`
+- **`GET /api/modules/:id`**
+  - **Auth**: `Bearer <token>` (Student or Admin)
+  - **Response `200 OK`**: Returns `{ success: true, data: { module: {...} } }`
+- **`POST /api/modules`**
+  - **Auth**: `Bearer <token>` (Admin only)
+  - **Body**: `{ "moduleCode": "...", "moduleName": "...", "description": "...", "lecturer": "...", "semester": "...", "year": 2026 }`
+  - **Response `201 Created`**: Returns `{ success: true, data: { module: {...} } }`
+- **`PUT /api/modules/:id`**
+  - **Auth**: `Bearer <token>` (Admin only)
+  - **Body**: Updated module fields
+  - **Response `200 OK`**: Returns `{ success: true, data: { module: {...} } }`
+- **`DELETE /api/modules/:id`**
+  - **Auth**: `Bearer <token>` (Admin only)
+  - **Response `200 OK`**: Cascades deletion across student enrollment arrays.
+- **`POST /api/modules/:id/enroll`**
+  - **Auth**: `Bearer <token>` (Student only)
+  - **Response `200 OK`**: Enrolls student in module. Returns `400 Bad Request` if duplicate.
+- **`DELETE /api/modules/:id/enroll`**
+  - **Auth**: `Bearer <token>` (Student only)
+  - **Response `200 OK`**: Unenrolls student from module.
+
+---
+
+## 3. Planned Future Endpoints (Phase 3+)
+
+
+### 3.4 Documents (`/api/documents`)
+- **`POST /api/documents/upload`** — Upload lecture PDF via `multipart/form-data` (`moduleId`, `file`). Initiates extraction & chunking.
+- **`GET /api/documents`** — List documents filtered by `moduleId`.
+- **`GET /api/documents/:id`** — Get document details, page count, and ingestion status (`PENDING`, `READY`, `FAILED`).
+- **`DELETE /api/documents/:id`** — Delete a document and its corresponding vector chunks.
+
+### 3.5 AI & RAG (`/api/ai`)
+- **`POST /api/ai/chat`** — Submit a contextual question scoped to a module or document.
+  - **Body**: `{ "moduleId": "...", "documentId": "...", "query": "Explain Theorem 3" }`
+  - **Response**: `{ "answer": "...", "sources": [{ "documentName": "...", "pageNumber": 5 }] }`
+- **`POST /api/ai/summarize`** — Generate an executive summary or study notes for an uploaded lecture.
+- **`POST /api/ai/podcast-script`** — Generate an audio-ready conversational study dialogue script between two hosts.
+
+### 3.6 Quizzes (`/api/quizzes`)
+- **`POST /api/quizzes/generate`** — Generate AI MCQs from a document or module with specified difficulty.
+- **`GET /api/quizzes/module/:moduleId`** — Retrieve practice questions for a module.
+- **`POST /api/quizzes/submit`** — Submit an attempt (`moduleId`, answers array); returns score, answer explanations, and weak-area diagnosis.
+- **`GET /api/quizzes/history`** — Retrieve past quiz attempts and historical scores.
+
+### 3.7 Flashcards (`/api/flashcards`)
+- **`POST /api/flashcards/generate`** — Generate front/back flashcard decks from lecture chunks.
+- **`GET /api/flashcards/module/:moduleId`** — Retrieve flashcard decks for spaced repetition revision.
+- **`PATCH /api/flashcards/:id/review`** — Record review confidence (easy, medium, hard).
+
+### 3.8 Study Plans (`/api/study-plans`)
+- **`POST /api/study-plans/generate`** — Generate an AI-recommended daily/weekly study schedule based on quiz weak spots and upcoming deadlines.
+- **`GET /api/study-plans`** — Get scheduled study tasks for today or this week.
+- **`PATCH /api/study-plans/:id/tasks/:taskId`** — Mark a study task as completed.
+
+### 3.9 Progress & Analytics (`/api/progress`)
+- **`GET /api/progress/dashboard`** — Consolidated metrics: overall mastery score, study streaks, hours spent, weak topics across all modules.
+- **`GET /api/progress/module/:moduleId`** — Module-specific mastery breakdown and topic retention trends.
+- **`POST /api/progress/session`** — Log a completed study session duration.
