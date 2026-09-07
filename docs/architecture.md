@@ -400,7 +400,7 @@ Key service components:
   - Enforces `RAG_MAX_CONTEXT_CHARS` (default: 12,000 characters) to avoid context overflow while preserving top-ranked chunks.
   - Builds verified, application-generated citations (`documentId`, `documentName`, `moduleCode`, `chunkIndex`, `pageStart`, `pageEnd`, `sectionHeading`).
 - **`generation.service.js`** (`server/src/services/ai/`):
-  - Communicates with Google Gemini via `@google/genai` using model `gemini-2.0-flash` (or `GEMINI_GENERATION_MODEL`).
+  - Communicates with Google Gemini via `@google/genai` using model `gemini-3.8-flash` (or `GEMINI_GENERATION_MODEL`).
   - Enforces conservative generation parameters (`temperature: 0.2`, `maxOutputTokens: 2048`).
   - Embeds strict prompt injection defenses: Treats reference materials strictly as untrusted DATA rather than system instructions.
   - Mandates explicit insufficient-information behavior: Returns *"I couldn't find enough information about this in the provided study materials."* whenever context is inadequate.
@@ -435,7 +435,7 @@ Key service components:
        │  - Strict grounding: no outside knowledge, no hallucinated citations
        ▼
 [Google Gemini Generation (@google/genai)]
-       │  - Model: gemini-2.0-flash (temperature: 0.2)
+       │  - Model: gemini-3.8-flash (temperature: 0.2)
        ▼
 [Final RAG Response Contract]
        │  - question
@@ -445,4 +445,31 @@ Key service components:
        ▼
 [React Study Assistant Interface]
 ```
+
+---
+
+## 13. Phase 8: Exam-Oriented Lecture Summaries Architecture
+
+### 13.1 Overview & Responsibilities
+Phase 8 introduces **Exam-Oriented Lecture Summaries** designed to provide structured, academically rigorous review materials for individual course documents without hallucination.
+
+Key components:
+- **`LectureSummary` Model** (`server/src/models/lectureSummary.model.js`):
+  - Stores structured fields: `overview`, `keyConcepts`, `importantPoints`, `examFocus`, `definitions`, `examples`, and `sourceChunks`.
+  - Maintains `version` counter with compound index `{ document: 1, version: -1 }` for versioned regenerations.
+- **`summary.service.js`** (`server/src/services/ai/`):
+  - Validates document IDs and enforces enrollment access control.
+  - Sequentially retrieves all `DocumentChunk` records for the lecture.
+  - Assembles bounded grounded context preserving chunk ordering and section headers.
+  - Invokes Google Gemini using structured JSON schema output with low temperature (`0.2`).
+  - Implements prompt injection defense by strictly treating context as reference DATA.
+  - Validates structured JSON schema before database persistence.
+  - Automatically increments version on regeneration.
+- **`summary.controller.js` & `summary.routes.js`**:
+  - Exposes `POST /api/summaries/generate`, `GET /api/summaries/document/:documentId`, `POST /api/summaries/document/:documentId/regenerate`, and `DELETE /api/summaries/document/:documentId` (admin-only).
+- **Frontend Lecture Summaries Interface (`LectureSummariesPage.jsx`)**:
+  - Module & lecture dropdown selectors.
+  - State-aware summary verification (checks existing summary without invoking Gemini on initial page load).
+  - Cards for Overview, Key Concepts, Important Points, Exam Focus, Glossary Definitions, Examples, and Source Attribution.
+
 

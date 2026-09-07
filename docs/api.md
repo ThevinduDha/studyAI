@@ -325,11 +325,76 @@ This document details the planned REST API routes, HTTP verbs, payload structure
     - `401 Unauthorized`: Missing or invalid JWT session.
     - `403 Forbidden`: Student attempting to query a non-enrolled module or document.
     - `502 Bad Gateway`: AI generation failure (sanitized error message).
-    - `503 Service Unavailable`: `GEMINI_API_KEY` unconfigured.
+### 2.7 Lecture Summaries (`/api/summaries`)
+- **`POST /api/summaries/generate`**
+  - **Auth**: Required (`student` or `admin`)
+  - **Description**: Generates an exam-oriented structured summary for a document based on its chunks.
+  - **Body**:
+    ```json
+    {
+      "documentId": "65f1a2b3c4d5e6f7a8b9c0d1"
+    }
+    ```
+  - **Response `201 Created`**:
+    ```json
+    {
+      "success": true,
+      "data": {
+        "summary": {
+          "_id": "675000000000000000000099",
+          "document": "65f1a2b3c4d5e6f7a8b9c0d1",
+          "module": "65f1a2b3c4d5e6f7a8b9c010",
+          "title": "Machine Learning Fundamentals",
+          "overview": "Comprehensive executive summary...",
+          "keyConcepts": [
+            { "title": "Supervised Learning", "explanation": "..." }
+          ],
+          "importantPoints": ["..."],
+          "examFocus": ["..."],
+          "definitions": [
+            { "term": "Gradient Descent", "definition": "..." }
+          ],
+          "examples": ["..."],
+          "version": 1,
+          "model": "gemini-3.8-flash",
+          "status": "generated",
+          "generatedAt": "2026-09-07T18:40:00.000Z"
+        },
+        "sources": [
+          {
+            "chunkId": "...",
+            "chunkIndex": 0,
+            "document": "...",
+            "documentName": "Lecture 01.pdf",
+            "pageStart": 1,
+            "pageEnd": 2,
+            "sectionHeading": "Introduction",
+            "relevanceScore": 1.0
+          }
+        ]
+      }
+    }
+    ```
+
+- **`GET /api/summaries/document/:documentId`**
+  - **Auth**: Required (`student` or `admin`)
+  - **Description**: Retrieves the latest generated summary version for the document.
+  - **Response `200 OK`**: Returns `{ success: true, data: { ...summary } }`
+  - **Response `404 Not Found`**: Returned if no summary has been generated yet for the document (`SUMMARY_NOT_FOUND`).
+
+- **`POST /api/summaries/document/:documentId/regenerate`**
+  - **Auth**: Required (`student` or `admin`)
+  - **Description**: Regenerates the lecture summary, incrementing its `version` field (e.g. `v1 -> v2`).
+  - **Response `200 OK`**: Returns `{ success: true, data: { summary, sources } }`
+
+- **`DELETE /api/summaries/document/:documentId`**
+  - **Auth**: Admin only
+  - **Description**: Deletes all generated summary records associated with the document.
+  - **Response `200 OK`**: Returns `{ success: true, message: "Summary deleted successfully", data: { deletedCount: 1 } }`
 
 ---
 
-## 3. Planned Future Endpoints (Phase 8+)
+## 3. Planned Future Endpoints (Phase 9+)
 
 
 

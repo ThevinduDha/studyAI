@@ -16,7 +16,7 @@ import { getClient, isConfigured } from './embedding.service.js';
  * - No API keys or internal stack traces are ever leaked to callers.
  */
 
-const DEFAULT_GENERATION_MODEL = 'gemini-2.0-flash';
+const DEFAULT_GENERATION_MODEL = 'gemini-3.8-flash';
 const DEFAULT_TEMPERATURE = 0.2;
 const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
 

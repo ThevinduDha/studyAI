@@ -8,6 +8,7 @@ import ModulesPage from './pages/ModulesPage.jsx';
 import AdminModulesPage from './pages/AdminModulesPage.jsx';
 import SemanticSearchPage from './pages/SemanticSearchPage.jsx';
 import StudyAssistantPage from './pages/StudyAssistantPage.jsx';
+import LectureSummariesPage from './pages/LectureSummariesPage.jsx';
 import Phase1OverviewPage from './pages/Phase1OverviewPage.jsx';
 
 function RootRedirect() {
@@ -37,6 +38,15 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <StudyAssistantPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/summaries"
+                element={
+                  <ProtectedRoute>
+                    <LectureSummariesPage />
                   </ProtectedRoute>
                 }
               />
@@ -80,7 +90,7 @@ export default function App() {
             </Routes>
           </main>
           <footer className="border-t border-slate-800/60 py-6 text-center text-xs text-slate-500">
-            StudyAI &bull; AI-Powered University Learning Platform &bull; Phase 7: Grounded RAG &amp; AI Answer Generation
+            StudyAI &bull; AI-Powered University Learning Platform &bull; Phase 8: Exam-Oriented Lecture Summaries
           </footer>
         </div>
       </AuthProvider>

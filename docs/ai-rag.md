@@ -29,15 +29,18 @@ DocumentChunk ──► Gemini Embeddings (@google/genai, gemini-embedding-2, 76
 PHASE 6 (Complete):
 User Question ──► Query Embedding (RETRIEVAL_QUERY) ──► Atlas Vector Search ($vectorSearch) ──► Grounded Retrieval
 
-PHASE 7 (Current Completed):
-Retrieved Chunks ──► Context Construction ──► Grounded Prompt ──► Gemini 2.0 Flash ──► Grounded Answer + Citations
+PHASE 7 (Complete):
+Retrieved Chunks ──► Context Construction ──► Grounded Prompt ──► Gemini 3.8 Flash ──► Grounded Answer + Citations
 
-PHASE 8+ (Future Phases):
+PHASE 8 (Complete):
+Selected Lecture ──► Comprehensive Chunk Context ──► Gemini 3.8 Flash (JSON Schema) ──► Exam-Oriented Summary + Source Attribution + Versioned Persistence
+
+PHASE 9+ (Future Phases):
 AI Tutor Modes, Quiz Generation, Flashcards, Podcasts
 ```
 
 > [!IMPORTANT]
-> **Phase 7 Grounding Standard**: StudyAI answers are strictly derived from the student's authorized course material chunks. General model knowledge is explicitly suppressed. When the provided context lacks sufficient information, the model states *"I couldn't find enough information about this in the provided study materials."* Citations are generated authoritatively by the application, never hallucinated by the model.
+> **Phase 7 & 8 Grounding Standard**: StudyAI outputs are strictly derived from authorized course material chunks. General model knowledge is explicitly suppressed. In Phase 7 Q&A, the model returns *"I couldn't find enough information about this in the provided study materials."* when information is lacking. In Phase 8, lecture summaries synthesize structured, exam-oriented study materials (Overview, Key Concepts, Important Points, Exam Focus, Definitions, Examples, and Sources) with database versioning.
 
 
 
@@ -173,7 +176,7 @@ AI Tutor Modes, Quiz Generation, Flashcards, Podcasts
 - **Strict Boundary**: Phase 6 focused strictly on retrieval.
 
 ### 3.7 Grounded Generation & Citation Pipeline (`generation.service.js`, `rag.service.js` — Phase 7 Active)
-- **Generative Model**: Google Gemini (`gemini-2.0-flash` configured via `GEMINI_GENERATION_MODEL`).
+- **Generative Model**: Google Gemini (`gemini-3.8-flash` configured via `GEMINI_GENERATION_MODEL`).
 - **Generation Parameters**: Conservative settings (`temperature: 0.2`, `maxOutputTokens: 2048`).
 - **Endpoint**: `POST /api/rag/ask` (Protected via JWT authentication).
 - **Workflow**:
@@ -242,3 +245,65 @@ The API response returns both the natural language answer and structured citatio
 ```
 
 This structure empowers the React frontend to display interactive source chips allowing students to quickly verify the exact slide or page corresponding to the answer.
+
+---
+
+## 5. Phase 8: Exam-Oriented Lecture Summaries
+
+### 5.1 Overview & Goals
+Phase 8 introduces **Exam-Oriented Lecture Summaries** that synthesize comprehensive study materials directly from uploaded course documents without relying on external or ungrounded model knowledge.
+
+### 5.2 Summarization Pipeline Flow
+```
+Student selects Module & Document
+               │
+               ▼
+   Authorization Verification (Student module enrollment / Admin global access)
+               │
+               ▼
+   DocumentChunk Sequential Retrieval (sorted by chunkIndex)
+               │
+               ▼
+   Comprehensive Grounded Context Construction (preserving source boundaries)
+               │
+               ▼
+   Gemini 3.8 Flash Generation (system instruction + JSON schema enforcement)
+               │
+               ▼
+   Structured JSON Validation & Normalization
+               │
+               ▼
+   Versioned Persistence in MongoDB (`LectureSummary` collection)
+               │
+               ▼
+   Student UI Display (Overview, Key Concepts, Important Points, Exam Focus, Definitions, Examples, Sources)
+```
+
+### 5.3 Data Schema (`LectureSummary`)
+- `document`: ObjectId ref `Document` (indexed)
+- `module`: ObjectId ref `Module` (indexed)
+- `title`: Descriptive lecture summary title
+- `overview`: Executive summary of core themes
+- `keyConcepts`: Array of `{ title, explanation }`
+- `importantPoints`: Array of strings
+- `examFocus`: Array of strings (likely questions, distinctions, formulas)
+- `definitions`: Array of `{ term, definition }`
+- `examples`: Array of practical illustrations
+- `sourceChunks`: Array of `{ chunkId, chunkIndex, document, documentName, pageStart, pageEnd, sectionHeading, relevanceScore }`
+- `model`: Generation model used (`gemini-3.8-flash`)
+- `version`: Number incremented on each regeneration
+- `status`: Enum `['generated', 'failed']`
+- `generatedAt`: Timestamp of generation
+
+### 5.4 REST API Endpoints
+- `POST /api/summaries/generate` — Generates a new lecture summary.
+- `GET /api/summaries/document/:documentId` — Retrieves the latest summary version.
+- `POST /api/summaries/document/:documentId/regenerate` — Regenerates summary with an incremented version number.
+- `DELETE /api/summaries/document/:documentId` — Admin-only endpoint to delete document summaries.
+
+### 5.5 Security & Integrity Rules
+1. **Authorization**: Students can only access or generate summaries for documents belonging to modules they are actively enrolled in.
+2. **Prompt Injection Defense**: Context is explicitly classified as untrusted reference data, neutralizing prompts embedded inside uploaded documents.
+3. **No Uncontrolled Calls**: The UI checks for existing summaries and displays them without calling Gemini on page load.
+4. **Authoritative Sources**: Source citations reflect actual MongoDB chunk metadata, preventing hallucinated citations.
+
