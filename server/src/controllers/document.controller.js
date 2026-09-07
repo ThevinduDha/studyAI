@@ -134,3 +134,41 @@ export const getDocumentChunks = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * @route   GET /api/documents/:id/embedding-status
+ * @desc    Get embedding generation status and metrics for a document
+ * @access  Private (Admin only)
+ */
+export const getEmbeddingStatus = async (req, res, next) => {
+  try {
+    const status = await documentService.getEmbeddingStatus(req.params.id, req.user);
+
+    return res.status(200).json({
+      success: true,
+      data: status
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   POST /api/documents/:id/re-embed
+ * @desc    Regenerate embeddings for all existing chunks of a document
+ * @access  Private (Admin only)
+ */
+export const reEmbed = async (req, res, next) => {
+  try {
+    const result = await documentService.reEmbedDocument(req.params.id, req.user);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Document chunks successfully re-embedded',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

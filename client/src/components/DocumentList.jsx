@@ -39,22 +39,50 @@ export default function DocumentList({
   const [deletingId, setDeletingId] = useState(null);
   const [actionError, setActionError] = useState(null);
 
-  // Chunk inspection states (Phase 4)
+  // Chunk inspection states (Phase 4 & 5)
   const [inspectingChunksDoc, setInspectingChunksDoc] = useState(null);
   const [chunksData, setChunksData] = useState({ chunks: [], pagination: { page: 1, totalPages: 1, total: 0 } });
   const [loadingChunks, setLoadingChunks] = useState(false);
+  const [embeddingStatusInfo, setEmbeddingStatusInfo] = useState(null);
+  const [reEmbedding, setReEmbedding] = useState(false);
 
   const handleViewChunks = async (doc, page = 1) => {
     setActionError(null);
     setLoadingChunks(true);
     setInspectingChunksDoc(doc);
     try {
-      const data = await documentService.getDocumentChunks(doc._id, page, 5);
+      const [data, embInfo] = await Promise.all([
+        documentService.getDocumentChunks(doc._id, page, 5),
+        canDelete
+          ? documentService.getDocumentEmbeddingStatus(doc._id).catch(() => null)
+          : Promise.resolve(null)
+      ]);
       setChunksData(data);
+      if (embInfo) {
+        setEmbeddingStatusInfo(embInfo);
+      }
     } catch (err) {
       setActionError(err.message || 'Failed to load document chunks');
     } finally {
       setLoadingChunks(false);
+    }
+  };
+
+  const handleReEmbed = async (docId) => {
+    if (!window.confirm('Regenerate 768-dimensional Gemini embeddings for all chunks of this document?')) return;
+    setActionError(null);
+    setReEmbedding(true);
+    try {
+      const result = await documentService.reEmbedDocument(docId);
+      setEmbeddingStatusInfo(result);
+      // Refresh current chunks view
+      const refreshedChunks = await documentService.getDocumentChunks(docId, chunksData.pagination?.page || 1, 5);
+      setChunksData(refreshedChunks);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      setActionError(err.message || 'Failed to re-embed document');
+    } finally {
+      setReEmbedding(false);
     }
   };
 
@@ -192,6 +220,9 @@ export default function DocumentList({
                       {doc.chunkCount !== undefined && doc.chunkCount > 0 && (
                         <span className="text-indigo-400 font-medium">&bull; {doc.chunkCount} chunks</span>
                       )}
+                      {doc.embeddedChunkCount !== undefined && doc.embeddedChunkCount > 0 && (
+                        <span className="text-violet-400 font-medium">&bull; {doc.embeddedChunkCount} embedded (768d)</span>
+                      )}
                       <span>&bull; Uploaded {new Date(doc.createdAt).toLocaleDateString()}</span>
                       {doc.module?.moduleCode && (
                         <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-300">
@@ -224,7 +255,7 @@ export default function DocumentList({
                     <button
                       onClick={() => handleViewChunks(doc, 1)}
                       className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-md bg-indigo-950/60 hover:bg-indigo-900/80 text-indigo-300 border border-indigo-800/60 transition cursor-pointer"
-                      title="Inspect structured document chunks (Phase 4)"
+                      title="Inspect structured document chunks (Phase 4 & 5)"
                     >
                       <Layers className="h-3.5 w-3.5 text-indigo-400" />
                       <span>Chunks {doc.chunkCount !== undefined ? `(${doc.chunkCount})` : ''}</span>
@@ -263,23 +294,17 @@ export default function DocumentList({
               <X className="h-4 w-4" />
             </button>
 
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
-                  {selectedDoc.module?.moduleCode || 'Module Document'}
-                </span>
-                <span className="text-xs text-slate-400">
-                  {selectedDoc.pageCount} pages &bull; {selectedDoc.extractedText?.length || 0} characters
-                </span>
-              </div>
-              <h3 className="text-base font-bold text-white truncate max-w-lg">{selectedDoc.originalName}</h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Ingested plain text extracted from PDF. This sanitized corpus serves as the grounding baseline for Phase 4 chunking.
+            <div className="mb-4 pb-3 border-b border-slate-800">
+              <h3 className="text-sm font-semibold text-white truncate max-w-lg">
+                Extracted Text: {selectedDoc.originalName}
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {selectedDoc.pageCount} pages &bull; {selectedDoc.extractedText?.length || 0} characters extracted
               </p>
             </div>
 
-            <div className="flex-1 overflow-y-auto rounded-lg border border-slate-800/80 bg-slate-950 p-4 font-mono text-xs text-slate-300 leading-relaxed whitespace-pre-wrap selection:bg-indigo-500 selection:text-white">
-              {selectedDoc.extractedText || '(No text content extracted from this document)'}
+            <div className="flex-1 overflow-y-auto font-mono text-xs text-slate-300 whitespace-pre-wrap bg-slate-950/60 p-4 rounded-lg border border-slate-900">
+              {selectedDoc.extractedText || 'No text extracted from this document.'}
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-slate-800/80 mt-4 text-xs">
@@ -297,7 +322,7 @@ export default function DocumentList({
         </div>
       )}
 
-      {/* Structured Chunks Modal (Phase 4) */}
+      {/* Structured Chunks Modal (Phase 4 & Phase 5) */}
       {inspectingChunksDoc && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="max-w-3xl w-full max-h-[90vh] rounded-2xl border border-slate-800 bg-[#0c1222] p-6 shadow-2xl flex flex-col relative">
@@ -309,14 +334,31 @@ export default function DocumentList({
             </button>
 
             <div className="mb-4 pb-3 border-b border-slate-800/80">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="inline-flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
-                  <Layers className="h-3 w-3" />
-                  Phase 4 Chunks
-                </span>
-                <span className="text-xs text-slate-400">
-                  Total: {chunksData.pagination?.total || 0} chunks &bull; Default target: ~900 words &bull; ~150 words overlap
-                </span>
+              <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
+                    <Layers className="h-3 w-3" />
+                    Phase 4 & 5 Vector Chunks
+                  </span>
+                  {embeddingStatusInfo && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-violet-950/60 text-violet-300 border border-violet-800/60">
+                      {embeddingStatusInfo.model || 'gemini-embedding-2'} ({embeddingStatusInfo.dimensions || 768}d) &bull;{' '}
+                      {embeddingStatusInfo.embeddedChunks}/{embeddingStatusInfo.totalChunks} embedded
+                    </span>
+                  )}
+                </div>
+
+                {canDelete && (
+                  <button
+                    onClick={() => handleReEmbed(inspectingChunksDoc._id)}
+                    disabled={reEmbedding}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-violet-900/50 hover:bg-violet-800/70 text-violet-200 text-xs font-medium border border-violet-700/60 transition cursor-pointer disabled:opacity-50"
+                    title="Regenerate 768-dim embeddings via Gemini"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${reEmbedding ? 'animate-spin' : ''}`} />
+                    <span>{reEmbedding ? 'Embedding...' : 'Re-embed'}</span>
+                  </button>
+                )}
               </div>
               <h3 className="text-base font-bold text-white truncate max-w-xl">
                 {inspectingChunksDoc.originalName}
@@ -340,13 +382,18 @@ export default function DocumentList({
                     className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 hover:border-slate-700 transition"
                   >
                     <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-800/60">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">
                           Chunk #{chunk.chunkIndex}
                         </span>
                         <span className="text-[11px] text-slate-400">
                           {chunk.characterCount} chars &bull; ~{chunk.tokenCount} tokens (est)
                         </span>
+                        {chunk.embeddingStatus === 'completed' && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-violet-950/80 text-violet-300 border border-violet-800/50">
+                            768d Vector Ready
+                          </span>
+                        )}
                       </div>
                       <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
                         {chunk.metadata?.sourceType || 'pdf'}

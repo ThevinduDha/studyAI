@@ -55,7 +55,26 @@ export const documentService = {
   getDocumentChunks: async (id, page = 1, limit = 20) => {
     const res = await api.get(`/documents/${id}/chunks?page=${page}&limit=${limit}`);
     return res.data;
+  },
+
+  /**
+   * Get embedding status and metrics for a document (Phase 5 - Admin only)
+   * @param {string} id - Document ObjectId
+   */
+  getDocumentEmbeddingStatus: async (id) => {
+    const res = await api.get(`/documents/${id}/embedding-status`);
+    return res.data;
+  },
+
+  /**
+   * Regenerate embeddings for all chunks of a document (Phase 5 - Admin only)
+   * @param {string} id - Document ObjectId
+   */
+  reEmbedDocument: async (id) => {
+    const res = await api.post(`/documents/${id}/re-embed`);
+    return res.data;
   }
 };
 
 export default documentService;
+

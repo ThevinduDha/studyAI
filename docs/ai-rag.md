@@ -20,18 +20,21 @@ General-purpose Large Language Models (LLMs) can produce plausible-sounding but 
 PHASE 3 (Complete):
 PDF ──► Safe Disk Storage ──► Text Extraction (pdf-parse) ──► Saved in MongoDB
 
-PHASE 4 (Current Completed):
+PHASE 4 (Complete):
 Extracted Text ──► Text Normalization ──► Hierarchical Semantic Chunking ──► DocumentChunk Collection
 
-PHASE 5 (Next Phase):
-Chunks ──► Gemini Embeddings (text-embedding-004) ──► Vector Database / Index
+PHASE 5 (Current Completed):
+DocumentChunk ──► Gemini Embeddings (@google/genai, gemini-embedding-2, 768 dims) ──► Atlas Vector Search Index
 
-PHASE 6+ (Future Phases):
-Query Vectorization ──► Semantic Retrieval ──► Grounded Prompt Construction ──► Gemini LLM Synthesis
+PHASE 6 (Next Phase):
+User Query ──► Query Embedding ──► Atlas Vector Search ($vectorSearch) ──► Semantic Retrieval
+
+PHASE 7+ (Future Phases):
+Retrieved Chunks ──► Grounded Prompt Construction ──► Gemini Generative LLM Synthesis
 ```
 
 > [!IMPORTANT]
-> **Phase 4 Boundary**: Phase 4 focuses exclusively on cleaning extracted text and partitioning it into structured, overlapping chunks saved in MongoDB with rich retrieval metadata. Absolutely NO embeddings, vector databases (Atlas Vector Search, Pinecone, FAISS, Chroma), semantic similarity calculations, or LLM inference calls are implemented in Phase 4.
+> **Phase 5 Boundary**: Phase 5 focuses exclusively on dense vector embedding generation and MongoDB Atlas Vector Search index infrastructure. Absolutely NO query embeddings, semantic retrieval endpoints, `$vectorSearch` query pipelines, top-k ranking, or LLM generative answer calls are implemented in Phase 5.
 
 ---
 
@@ -126,15 +129,22 @@ Query Vectorization ──► Semantic Retrieval ──► Grounded Prompt Const
   - `tokenCount`: Estimated token count.
   - `metadata`: `{ originalName, pageStart, pageEnd, sectionHeading, sourceType: 'pdf' }`.
 
-### 3.4 Embedding Generation
-- **Model**: Google Gemini `text-embedding-004` (or latest stable Google embedding model).
-- **Format**: High-dimensional vector array.
-- **Batching**: Chunks are processed in batches respecting Gemini API rate limits with exponential backoff retry handling.
+### 3.4 Embedding Generation (`embedding.service.js` — Phase 5 Active)
+- **SDK**: Official Google GenAI JavaScript SDK (`@google/genai`).
+- **Model**: `gemini-embedding-2` (configured via `process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2'`).
+- **Dimensionality**: Strictly validated `768 dimensions` (configured via `process.env.GEMINI_EMBEDDING_DIMENSIONS || 768`).
+- **Task Type**: `'RETRIEVAL_DOCUMENT'` for all document chunks.
+- **Batching**: Chunks are processed in batches (default: 20 per batch) with order preservation and robust rate-limit retry handling.
+- **Dimensionality Validation**: The service asserts that every generated vector array is numeric, finite, and contains exactly 768 elements before saving to MongoDB. Mismatches are rejected with `EMBEDDING_DIMENSION_MISMATCH`.
 
-### 3.5 Vector Storage & Semantic Search
-- Chunk text, vector embeddings, and metadata are persisted in the MongoDB `chunks` collection.
-- Vector search can leverage MongoDB Atlas Vector Search (using cosine or dot-product metrics) or an in-memory cosine similarity engine for localized execution.
-- Query filter: Scoped by `userId` and `moduleId` to guarantee strong multi-tenant data isolation.
+### 3.5 Vector Storage & Atlas Vector Search Foundation (`vectorIndex.js` — Phase 5 Active)
+- **Collection**: `documentchunks` (separate collection, one record per chunk).
+- **Field**: `embedding` (`type: [Number]`, `select: false`, stripped from client JSON).
+- **Atlas Search Index**: `document_chunks_vector_index`
+  - Path: `embedding` (Type: `vector`, `numDimensions: 768`, `similarity: cosine`)
+  - Filter Paths: `module` (Type: `filter`), `document` (Type: `filter`)
+  - Status: Verified `READY` and `queryable: true` on live MongoDB Atlas cluster.
+- **Management & Verification**: Programmatic management via `server/src/config/vectorIndex.js` and JSON definition `server/src/config/vectorSearchIndex.json`.
 
 ---
 

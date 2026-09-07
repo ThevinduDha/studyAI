@@ -46,6 +46,19 @@ const documentSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    embeddedChunkCount: {
+      type: Number,
+      default: 0
+    },
+    embeddingStatus: {
+      type: String,
+      enum: {
+        values: ['pending', 'processing', 'completed', 'failed'],
+        message: 'Embedding status must be pending, processing, completed, or failed'
+      },
+      default: 'pending',
+      index: true
+    },
     extractedText: {
       type: String,
       default: ''

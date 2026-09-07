@@ -173,11 +173,47 @@ This document details the planned REST API routes, HTTP verbs, payload structure
         }
       }
     }
+- **`GET /api/documents/:id/embedding-status`**
+  - **Auth**: `Bearer <token>` (Admin only — Phase 5 Active)
+  - **Description**: Returns embedding generation status, chunk counts, model, and dimensions without exposing raw vector arrays.
+  - **Response `200 OK`**:
+    ```json
+    {
+      "success": true,
+      "data": {
+        "documentId": "67ce123...",
+        "originalName": "cs401_lecture1.pdf",
+        "totalChunks": 12,
+        "embeddedChunks": 12,
+        "failedChunks": 0,
+        "status": "completed",
+        "model": "gemini-embedding-2",
+        "dimensions": 768
+      }
+    }
+    ```
+- **`POST /api/documents/:id/re-embed`**
+  - **Auth**: `Bearer <token>` (Admin only — Phase 5 Active)
+  - **Description**: Regenerates dense 768-dimensional embeddings for all existing chunks of a document without re-extracting the PDF.
+  - **Response `200 OK`**:
+    ```json
+    {
+      "success": true,
+      "message": "Document chunks successfully re-embedded",
+      "data": {
+        "documentId": "67ce123...",
+        "totalChunks": 12,
+        "embeddedChunks": 12,
+        "status": "completed",
+        "model": "gemini-embedding-2",
+        "dimensions": 768
+      }
+    }
     ```
 
 ---
 
-## 3. Planned Future Endpoints (Phase 5+)
+## 3. Planned Future Endpoints (Phase 6+)
 
 ### 3.5 AI & RAG (`/api/ai`)
 - **`POST /api/ai/chat`** — Submit a contextual question scoped to a module or document.

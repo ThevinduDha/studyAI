@@ -84,9 +84,11 @@ Metadata, file storage references, and raw extracted text for uploaded course li
 | `fileSize` | Number | File size in bytes | Required, max 25MB |
 | `pageCount` | Number | Total extracted pages from PDF | Optional, default: 0 |
 | `chunkCount` | Number | Total generated semantic chunks | Optional, default: 0 |
+| `embeddedChunkCount` | Number | Total chunks with generated embeddings | Optional, default: 0 |
+| `embeddingStatus` | String | Embedding lifecycle state (`pending`, `processing`, `completed`, `failed`) | Enum, default: `pending`, indexed |
 | `extractedText`| String | Cleaned, normalized plain text extracted from PDF | Optional, default: `""` |
 | `status` | String | Lifecycle state (`uploaded`, `processing`, `processed`, `failed`) | Enum, default: `uploaded`, indexed |
-| `processingError`| String | Error message if extraction failed | Optional |
+| `processingError`| String | Error message if extraction or embedding failed | Optional |
 | `createdAt` | Date | Upload timestamp | Auto-managed timestamp |
 | `updatedAt` | Date | Ingestion timestamp | Auto-managed timestamp |
 
@@ -94,8 +96,8 @@ Metadata, file storage references, and raw extracted text for uploaded course li
 
 ---
 
-### 2.4 `documentchunks` (`server/src/models/documentChunk.model.js` — Phase 4 Active)
-Discrete, segmented text passages extracted from documents for vector similarity search and RAG retrieval. Stored in a separate MongoDB collection.
+### 2.4 `documentchunks` (`server/src/models/documentChunk.model.js` — Phase 4 & 5 Active)
+Discrete, segmented text passages extracted from documents and vector-embedded for similarity search and RAG retrieval.
 
 | Field | Type | Description | Constraints & Indexing |
 |---|---|---|---|
@@ -112,12 +114,21 @@ Discrete, segmented text passages extracted from documents for vector similarity
 | `metadata.pageEnd` | Number | Ending source page (if detectable) | Nullable / Optional |
 | `metadata.sectionHeading` | String | Detected section or topic heading | Nullable / Optional |
 | `metadata.sourceType` | String | Document source type | Default: `'pdf'` |
+| `embedding` | Array<Number> | Dense 768-dimensional vector from Gemini | Optional, `select: false`, Atlas Vector Search |
+| `embeddingModel` | String | Name of embedding model used | e.g. `'gemini-embedding-2'` |
+| `embeddingDimensions` | Number | Number of dimensions in vector | e.g. `768` |
+| `embeddingStatus` | String | State (`pending`, `processing`, `completed`, `failed`) | Enum, default: `'pending'`, indexed |
+| `embeddingGeneratedAt` | Date | Timestamp of vector generation | Nullable |
 | `createdAt` | Date | Chunk creation timestamp | Auto-managed timestamp |
 | `updatedAt` | Date | Chunk modification timestamp | Auto-managed timestamp |
 
 *Indexes*:
-- Compound Unique Index: `{ document: 1, chunkIndex: 1 }` (guarantees chunk ordering integrity and prevents duplicate indexes per document)
-- Compound Query Index: `{ module: 1, document: 1 }` (accelerates module-scoped RAG retrieval and cascades)
+- **Compound Unique Index**: `{ document: 1, chunkIndex: 1 }` (guarantees chunk ordering integrity and prevents duplicate indexes per document)
+- **Compound Query Index**: `{ module: 1, document: 1 }` (accelerates module-scoped RAG retrieval and cascades)
+- **MongoDB Atlas Vector Search Index**: `document_chunks_vector_index`
+  - Field: `embedding` (Type: `vector`, `numDimensions: 768`, `similarity: cosine`)
+  - Filter Fields: `module` (Type: `filter`), `document` (Type: `filter`)
+  - Status: `READY` (Verified queryable on Atlas cluster)
 
 ---
 

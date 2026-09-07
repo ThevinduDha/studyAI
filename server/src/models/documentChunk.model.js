@@ -63,6 +63,33 @@ const documentChunkSchema = new mongoose.Schema(
         default: 'pdf',
         trim: true
       }
+    },
+    embedding: {
+      type: [Number],
+      required: false,
+      select: false
+    },
+    embeddingModel: {
+      type: String,
+      default: null,
+      trim: true
+    },
+    embeddingDimensions: {
+      type: Number,
+      default: null
+    },
+    embeddingStatus: {
+      type: String,
+      enum: {
+        values: ['pending', 'processing', 'completed', 'failed'],
+        message: 'Embedding status must be pending, processing, completed, or failed'
+      },
+      default: 'pending',
+      index: true
+    },
+    embeddingGeneratedAt: {
+      type: Date,
+      default: null
     }
   },
   {
@@ -70,6 +97,7 @@ const documentChunkSchema = new mongoose.Schema(
     toJSON: {
       transform: (doc, ret) => {
         delete ret.__v;
+        delete ret.embedding;
         return ret;
       }
     }

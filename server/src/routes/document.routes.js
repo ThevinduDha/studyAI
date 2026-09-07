@@ -4,7 +4,9 @@ import {
   getDocuments,
   getDocument,
   deleteDocument,
-  getDocumentChunks
+  getDocumentChunks,
+  getEmbeddingStatus,
+  reEmbed
 } from '../controllers/document.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/role.middleware.js';
@@ -27,6 +29,12 @@ router.get('/:id', validateObjectId('id'), getDocument);
 
 // Retrieve document chunks (paginated, scoped by enrollment / role)
 router.get('/:id/chunks', validateObjectId('id'), getDocumentChunks);
+
+// Embedding generation status & metrics (Admin only)
+router.get('/:id/embedding-status', validateObjectId('id'), requireRole('admin'), getEmbeddingStatus);
+
+// Re-embed document chunks (Admin only)
+router.post('/:id/re-embed', validateObjectId('id'), requireRole('admin'), reEmbed);
 
 // Delete document (Admin only)
 router.delete('/:id', validateObjectId('id'), requireRole('admin'), deleteDocument);

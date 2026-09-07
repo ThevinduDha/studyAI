@@ -4,6 +4,7 @@ import DocumentChunk from '../../models/documentChunk.model.js';
 import Module from '../../models/module.model.js';
 import User from '../../models/user.model.js';
 import { processDocument } from './documentProcessing.service.js';
+import * as embeddingService from '../ai/embedding.service.js';
 
 /**
  * Creates a new document record and initiates asynchronous text extraction
@@ -233,10 +234,163 @@ export const getDocumentChunks = async (documentId, { page = 1, limit = 20, user
   };
 };
 
+/**
+ * Retrieves embedding status and metadata for a document (Admin only)
+ *
+ * @param {string} documentId - MongoDB ObjectId of document
+ * @param {Object} user - Authenticated user object
+ * @returns {Promise<Object>} Safe embedding status summary (no vectors)
+ */
+export const getEmbeddingStatus = async (documentId, user) => {
+  if (user.role !== 'admin') {
+    const error = new Error('Access denied: Admin role required');
+    error.code = 'FORBIDDEN';
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const document = await Document.findById(documentId);
+  if (!document) {
+    const error = new Error('Document not found');
+    error.code = 'DOCUMENT_NOT_FOUND';
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const [totalChunks, embeddedChunks, failedChunks, sampleChunk] = await Promise.all([
+    DocumentChunk.countDocuments({ document: documentId }),
+    DocumentChunk.countDocuments({ document: documentId, embeddingStatus: 'completed' }),
+    DocumentChunk.countDocuments({ document: documentId, embeddingStatus: 'failed' }),
+    DocumentChunk.findOne({ document: documentId, embeddingStatus: 'completed' }).select(
+      'embeddingModel embeddingDimensions'
+    )
+  ]);
+
+  const defaultModel = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2';
+  const defaultDimensions = parseInt(process.env.GEMINI_EMBEDDING_DIMENSIONS, 10) || 768;
+
+  let computedStatus = document.embeddingStatus || 'pending';
+  if (totalChunks > 0 && embeddedChunks === totalChunks) {
+    computedStatus = 'completed';
+  } else if (failedChunks > 0) {
+    computedStatus = 'failed';
+  }
+
+  return {
+    documentId: document._id,
+    originalName: document.originalName,
+    totalChunks,
+    embeddedChunks,
+    failedChunks,
+    status: computedStatus,
+    model: sampleChunk?.embeddingModel || defaultModel,
+    dimensions: sampleChunk?.embeddingDimensions || defaultDimensions
+  };
+};
+
+/**
+ * Re-embeds all existing chunks of a document without re-extracting the PDF (Admin only)
+ *
+ * @param {string} documentId - MongoDB ObjectId of document
+ * @param {Object} user - Authenticated user object
+ * @param {Object} [options] - Options (e.g. client override for testing)
+ * @returns {Promise<Object>} Updated status
+ */
+export const reEmbedDocument = async (documentId, user, options = {}) => {
+  if (user.role !== 'admin') {
+    const error = new Error('Access denied: Admin role required');
+    error.code = 'FORBIDDEN';
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const document = await Document.findById(documentId);
+  if (!document) {
+    const error = new Error('Document not found');
+    error.code = 'DOCUMENT_NOT_FOUND';
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const chunks = await DocumentChunk.find({ document: documentId }).sort({ chunkIndex: 1 });
+  if (chunks.length === 0) {
+    const error = new Error('No chunks found for this document to embed');
+    error.code = 'NO_CHUNKS_FOUND';
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const hasClient = Boolean(options.embeddingClient);
+  const isAiConfigured = embeddingService.isConfigured() || hasClient;
+  if (!isAiConfigured) {
+    const configError = new Error(
+      'Embedding generation failed: GEMINI_API_KEY is not configured in server/.env'
+    );
+    configError.code = 'GEMINI_NOT_CONFIGURED';
+    configError.statusCode = 503;
+    throw configError;
+  }
+
+  const embeddingModel = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2';
+  const embeddingDimensions = parseInt(process.env.GEMINI_EMBEDDING_DIMENSIONS, 10) || 768;
+
+  document.embeddingStatus = 'processing';
+  await document.save();
+
+  try {
+    const chunkTexts = chunks.map((c) => c.text);
+    const vectors = await embeddingService.generateEmbeddings(chunkTexts, {
+      model: embeddingModel,
+      dimensions: embeddingDimensions,
+      client: options.embeddingClient
+    });
+
+    const now = new Date();
+    const updateOps = chunks.map((chunk, idx) =>
+      DocumentChunk.updateOne(
+        { _id: chunk._id },
+        {
+          $set: {
+            embedding: vectors[idx],
+            embeddingModel,
+            embeddingDimensions,
+            embeddingStatus: 'completed',
+            embeddingGeneratedAt: now
+          }
+        }
+      )
+    );
+
+    await Promise.all(updateOps);
+
+    document.embeddedChunkCount = chunks.length;
+    document.embeddingStatus = 'completed';
+    document.processingError = null;
+    await document.save();
+
+    return {
+      documentId: document._id,
+      totalChunks: chunks.length,
+      embeddedChunks: chunks.length,
+      status: 'completed',
+      model: embeddingModel,
+      dimensions: embeddingDimensions
+    };
+  } catch (err) {
+    document.embeddingStatus = 'failed';
+    document.processingError = err.message || 'Re-embedding failed';
+    await document.save();
+    throw err;
+  }
+};
+
 export default {
   createDocument,
   getDocuments,
   getDocumentById,
   deleteDocument,
-  getDocumentChunks
+  getDocumentChunks,
+  getEmbeddingStatus,
+  reEmbedDocument
 };
+

@@ -192,9 +192,10 @@ The core philosophy of StudyAI is **grounded intelligence**: the AI model priori
 
 ### 8.1 Scope & Incremental Pipeline Boundaries
 - **Phase 3 (Complete)**: `PDF Upload` ──► `Text Extraction` ──► `Extracted Text & Page Count Saved in MongoDB`
-- **Phase 4 (Current Completed)**: `Extracted Text` ──► `Text Normalization` ──► `Semantic Sliding-Window Chunking` ──► `DocumentChunk Records in MongoDB`
-- **Phase 5 (Next Phase)**: `Chunks` ──► `Gemini Vector Embeddings (text-embedding-004)` ──► `Vector Storage / Index`
-- **Phase 6+ (Future)**: `Semantic Retrieval` ──► `Context Re-ranking` ──► `LLM Synthesis (Gemini Flash/Pro)`
+- **Phase 4 (Complete)**: `Extracted Text` ──► `Text Normalization` ──► `Semantic Sliding-Window Chunking` ──► `DocumentChunk Records in MongoDB`
+- **Phase 5 (Current Completed)**: `DocumentChunk` ──► `Gemini Embeddings (@google/genai, gemini-embedding-2, 768 dims)` ──► `MongoDB Vector Storage` ──► `Atlas Vector Search Index`
+- **Phase 6 (Next Phase)**: `User Query` ──► `Query Embedding` ──► `Atlas Vector Search ($vectorSearch)` ──► `Ranked Candidate Chunks`
+- **Phase 7+ (Future)**: `Retrieved Chunks` ──► `Grounded Prompt Construction` ──► `Gemini LLM Synthesis (Flash / Pro)`
 
 ---
 
@@ -281,6 +282,57 @@ Strict architectural separation of concerns is maintained:
 ### 8.4 Access Scoping & Cascade Cleanup
 - **Role-Based Upload/Delete**: `POST /api/documents` and `DELETE /api/documents/:id` require `admin` role.
 - **Enrollment Scoping for Students**: When students request `GET /api/documents` or `GET /api/documents/:id`, access is permitted **only** for modules where the student is actively enrolled in `enrolledModules`. Unenrolled requests receive `403 Forbidden`.
-- **Cascade Deletion**: When an administrator deletes a module (`DELETE /api/modules/:id`), all associated Document records and their corresponding physical disk files are unlinked and removed.
+- **Cascade Deletion**: When an administrator deletes a module (`DELETE /api/modules/:id`), all associated Document records, corresponding physical disk files, and generated `DocumentChunk` records (with embedding vectors) are unlinked and removed.
+
+---
+
+## 10. Phase 5: Embeddings & Atlas Vector Storage Architecture
+
+### 10.1 Overview & Responsibilities
+Phase 5 introduces high-dimensional vector embeddings and MongoDB Atlas Vector Search index infrastructure. Each `DocumentChunk` is embedded using Google's current generation embedding model (`gemini-embedding-2`) at 768 dimensions with strict dimensionality validation.
+
+Architectural components:
+- **`embedding.service.js`** (`server/src/services/ai/`):
+  - Uses the official `@google/genai` SDK (`GoogleGenAI`).
+  - Implements `generateEmbedding(text, options)` and `generateEmbeddings(texts, options)` in configurable batches.
+  - Validates vector output length against configured dimensions (768), enforcing numeric sanity.
+  - Sanitizes errors so provider API keys and stack traces are never leaked.
+- **`vectorIndex.js` & `vectorSearchIndex.json`** (`server/src/config/`):
+  - Programmatically defines and manages the Atlas Vector Search index named `document_chunks_vector_index`.
+  - Configures cosine similarity across 768 dimensions on the `embedding` path.
+  - Adds filter indexing on `module` and `document` paths for fast tenant and course scoping.
+- **`documentProcessing.service.js`**:
+  - Extends ingestion pipeline: `Extract` ──► `Clean` ──► `Chunk` ──► `Reprocess Cleanup` ──► `Generate 768-dim Embeddings` ──► `Store Chunks with Vectors` ──► `Update Document`.
+- **`document.controller.js` & `document.routes.js`**:
+  - Admin endpoints: `GET /api/documents/:id/embedding-status` and `POST /api/documents/:id/re-embed`.
+
+### 10.2 Embedding Pipeline Diagram
+```
+[DocumentChunk Records]
+         │
+         ▼
+[Embedding Service (@google/genai)]
+         │  Task Type: "RETRIEVAL_DOCUMENT"
+         │  Model: "gemini-embedding-2"
+         │  Output Dimensionality: 768
+         ▼
+[Dimension Validator] ──► Asserts vector.length === 768 && all values finite numbers
+         │
+         ▼
+[MongoDB DocumentChunk Collection]
+         │  Stores: embedding (select: false), embeddingModel, embeddingDimensions, embeddingStatus
+         ▼
+[MongoDB Atlas Vector Search Index]
+         │  Index: document_chunks_vector_index
+         │  Path: embedding (768, cosine)
+         │  Filters: module, document
+         ▼
+[Status: READY / Queryable] (Foundation for Phase 6 Semantic Retrieval)
+```
+
+### 10.3 Reprocessing & Vector Lifecycle Safety
+1. **Idempotent Replacement**: Re-processing a document completely wipes previous chunks and their embedding vectors (`DocumentChunk.deleteMany({ document: id })`) before generating new ones.
+2. **Selective Re-embedding**: `POST /api/documents/:id/re-embed` allows administrators to regenerate embeddings across existing chunks without re-extracting or re-chunking the original PDF.
+3. **Information Concealment**: Vector arrays (`embedding`) are configured with `select: false` on Mongoose schema and stripped in `toJSON()`, ensuring massive float arrays are never sent across HTTP to normal client endpoints.
 
 
