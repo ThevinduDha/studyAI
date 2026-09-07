@@ -22,6 +22,13 @@ import {
   Zap
 } from 'lucide-react';
 import { analyticsService } from '../services/analytics.service.js';
+import { PageHeader } from '../components/ui/PageHeader.jsx';
+import { Button } from '../components/ui/Button.jsx';
+import { Badge } from '../components/ui/Badge.jsx';
+import { Card } from '../components/ui/Card.jsx';
+import { EmptyState } from '../components/ui/EmptyState.jsx';
+import { Skeleton, SkeletonGrid, SkeletonCard } from '../components/ui/Skeleton.jsx';
+import { Tabs } from '../components/ui/Tabs.jsx';
 
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
@@ -29,7 +36,7 @@ export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState(null);
   const [aiAdvice, setAiAdvice] = useState(null);
   const [loadingAi, setLoadingAi] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // overview, topics, modules, missed
+  const [activeTab, setActiveTab] = useState('overview');
   const [hoveredPoint, setHoveredPoint] = useState(null);
 
   const fetchAnalytics = async () => {
@@ -83,19 +90,15 @@ export default function AnalyticsPage() {
   // Render Loading State
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <div className="h-8 w-64 bg-slate-800 animate-pulse rounded-lg mb-2"></div>
-            <div className="h-4 w-96 bg-slate-800/60 animate-pulse rounded"></div>
+            <Skeleton height="h-8" className="w-64 mb-2" />
+            <Skeleton height="h-4" className="w-96" />
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-28 bg-slate-900/60 border border-slate-800 rounded-xl animate-pulse"></div>
-          ))}
-        </div>
-        <div className="h-72 bg-slate-900/60 border border-slate-800 rounded-2xl animate-pulse"></div>
+        <SkeletonGrid count={5} />
+        <SkeletonCard />
       </div>
     );
   }
@@ -103,19 +106,22 @@ export default function AnalyticsPage() {
   // Render Error State
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <div className="h-14 w-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-4">
-          <AlertTriangle className="h-7 w-7" />
-        </div>
-        <h2 className="text-xl font-bold text-white mb-2">Unable to Load Analytics</h2>
-        <p className="text-slate-400 text-sm max-w-md mx-auto mb-6">{error}</p>
-        <button
-          onClick={fetchAnalytics}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Retry
-        </button>
+      <div className="max-w-4xl mx-auto px-4 py-16 text-center animate-fade-in">
+        <Card className="p-8 space-y-4">
+          <div className="h-14 w-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mx-auto">
+            <AlertTriangle className="h-7 w-7" />
+          </div>
+          <h2 className="text-xl font-bold text-heading">Unable to Load Analytics</h2>
+          <p className="text-muted text-sm max-w-md mx-auto">{error}</p>
+          <Button
+            variant="primary"
+            size="md"
+            icon={RefreshCw}
+            onClick={fetchAnalytics}
+          >
+            Retry
+          </Button>
+        </Card>
       </div>
     );
   }
@@ -138,26 +144,13 @@ export default function AnalyticsPage() {
   // Render Empty State
   if (!hasData || overview.totalQuizzesCompleted === 0) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <div className="h-20 w-20 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-6 shadow-inner shadow-indigo-500/10">
-          <BarChart2 className="h-10 w-10" />
-        </div>
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-950/60 text-indigo-400 border border-indigo-500/30 uppercase tracking-wider">
-          Phase 11 Intelligence
-        </span>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mt-3 mb-2">No Quiz History Yet</h1>
-        <p className="text-slate-400 text-sm sm:text-base max-w-md mx-auto mb-8">
-          Complete your first practice quiz to unlock comprehensive performance metrics, weak-topic diagnosis, and personalized revision intelligence.
-        </p>
-        <Link
-          to="/quizzes"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-medium text-sm shadow-lg shadow-indigo-500/25 transition transform hover:-translate-y-0.5"
-        >
-          <Award className="h-4 w-4" />
-          Take a Practice Quiz
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
+      <EmptyState
+        icon={BarChart2}
+        title="No Quiz History Yet"
+        description="Complete your first practice quiz to unlock comprehensive performance metrics, weak-topic diagnosis, and personalized revision intelligence."
+        actionLabel="Take a Practice Quiz"
+        onAction={() => window.location.assign('/quizzes')}
+      />
     );
   }
 
@@ -185,68 +178,63 @@ export default function AnalyticsPage() {
     : '';
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-        <div>
+      <PageHeader
+        badge="Phase 11 Intelligence"
+        badgeVariant="indigo"
+        title="Performance Analytics"
+        icon={BarChart2}
+        subtitle="Grounded learning analytics derived from your validated Quiz records."
+        actions={
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              Performance Analytics
-            </h1>
-            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-950/80 text-indigo-400 border border-indigo-500/30">
-              Phase 11
-            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={RefreshCw}
+              onClick={fetchAnalytics}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Award}
+              onClick={() => window.location.assign('/quizzes')}
+            >
+              Start Quiz
+            </Button>
           </div>
-          <p className="text-slate-400 text-sm mt-1">
-            Grounded learning analytics derived from your validated Quiz records.
-          </p>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={fetchAnalytics}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </button>
-          <Link
-            to="/quizzes"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium shadow-sm transition"
-          >
-            <Award className="h-3.5 w-3.5" />
-            Start Quiz
-          </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* 1. Overview Metric Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {/* Overall Accuracy */}
-        <div className="bg-slate-900/80 border border-slate-800/90 rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
+        <Card className="p-4 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between text-muted text-xs">
             <span>Overall Accuracy</span>
-            <Target className="h-4 w-4 text-indigo-400" />
+            <Target className="h-4 w-4 text-indigo-500" />
           </div>
           <div className="mt-2">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl sm:text-3xl font-extrabold text-white">
+              <span className="text-2xl sm:text-3xl font-extrabold text-heading">
                 {overview.overallAccuracy}%
               </span>
-              <span
-                className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${
+              <Badge
+                variant={
                   overview.overallAccuracy >= 80
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    ? 'emerald'
                     : overview.overallAccuracy >= 60
-                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                }`}
+                    ? 'amber'
+                    : 'rose'
+                }
+                size="xs"
               >
                 {overview.overallAccuracy >= 80 ? 'Strong' : overview.overallAccuracy >= 60 ? 'Average' : 'Needs Focus'}
-              </span>
+              </Badge>
             </div>
-            <div className="w-full bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
+            <div className="w-full bg-subtle rounded-full h-1.5 mt-2 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
                   overview.overallAccuracy >= 80 ? 'bg-emerald-500' : overview.overallAccuracy >= 60 ? 'bg-amber-500' : 'bg-rose-500'
@@ -255,109 +243,110 @@ export default function AnalyticsPage() {
               ></div>
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Quizzes Completed */}
-        <div className="bg-slate-900/80 border border-slate-800/90 rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
+        <Card className="p-4 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between text-muted text-xs">
             <span>Quizzes Done</span>
-            <Award className="h-4 w-4 text-purple-400" />
+            <Award className="h-4 w-4 text-purple-500" />
           </div>
           <div className="mt-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-white">
+            <span className="text-2xl sm:text-3xl font-extrabold text-heading">
               {overview.totalQuizzesCompleted}
             </span>
-            <p className="text-slate-500 text-[11px] mt-1">
-              Avg score: <span className="text-slate-300 font-medium">{overview.averageQuizScore} pts</span>
+            <p className="text-muted text-[11px] mt-1">
+              Avg score: <span className="text-heading font-medium">{overview.averageQuizScore} pts</span>
             </p>
           </div>
-        </div>
+        </Card>
 
         {/* Questions Attempted */}
-        <div className="bg-slate-900/80 border border-slate-800/90 rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
+        <Card className="p-4 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between text-muted text-xs">
             <span>Questions Solved</span>
-            <Layers className="h-4 w-4 text-cyan-400" />
+            <Layers className="h-4 w-4 text-cyan-500" />
           </div>
           <div className="mt-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-white">
+            <span className="text-2xl sm:text-3xl font-extrabold text-heading">
               {overview.totalQuestionsAttempted}
             </span>
-            <p className="text-slate-500 text-[11px] mt-1">
-              <span className="text-emerald-400 font-medium">{overview.totalCorrect} correct</span> · <span className="text-rose-400 font-medium">{overview.totalIncorrect} missed</span>
+            <p className="text-muted text-[11px] mt-1">
+              <span className="text-emerald-500 font-medium">{overview.totalCorrect} correct</span> · <span className="text-rose-500 font-medium">{overview.totalIncorrect} missed</span>
             </p>
           </div>
-        </div>
+        </Card>
 
         {/* Average Score */}
-        <div className="bg-slate-900/80 border border-slate-800/90 rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
+        <Card className="p-4 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between text-muted text-xs">
             <span>Best / Worst</span>
-            <Activity className="h-4 w-4 text-emerald-400" />
+            <Activity className="h-4 w-4 text-emerald-500" />
           </div>
           <div className="mt-2">
-            <div className="flex items-baseline gap-1 text-2xl sm:text-3xl font-extrabold text-white">
+            <div className="flex items-baseline gap-1 text-2xl sm:text-3xl font-extrabold text-heading">
               <span>{overview.bestQuizPercentage}%</span>
-              <span className="text-xs text-slate-500 font-normal">/ {overview.worstQuizPercentage}%</span>
+              <span className="text-xs text-muted font-normal">/ {overview.worstQuizPercentage}%</span>
             </div>
-            <p className="text-slate-500 text-[11px] mt-1">
-              Mean: <span className="text-slate-300 font-medium">{overview.averageQuizPercentage}%</span>
+            <p className="text-muted text-[11px] mt-1">
+              Mean: <span className="text-heading font-medium">{overview.averageQuizPercentage}%</span>
             </p>
           </div>
-        </div>
+        </Card>
 
         {/* Total Time Spent */}
-        <div className="bg-slate-900/80 border border-slate-800/90 rounded-xl p-4 flex flex-col justify-between col-span-2 sm:col-span-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
+        <Card className="p-4 flex flex-col justify-between col-span-2 sm:col-span-1 shadow-sm">
+          <div className="flex items-center justify-between text-muted text-xs">
             <span>Total Study Time</span>
-            <Clock className="h-4 w-4 text-amber-400" />
+            <Clock className="h-4 w-4 text-amber-500" />
           </div>
           <div className="mt-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-white">
+            <span className="text-2xl sm:text-3xl font-extrabold text-heading">
               {formatSeconds(overview.totalTimeSpent)}
             </span>
-            <p className="text-slate-500 text-[11px] mt-1">
-              Pacing: <span className="text-slate-300 font-medium">~{overview.averageTimePerQuestion}s / question</span>
+            <p className="text-muted text-[11px] mt-1">
+              Pacing: <span className="text-heading font-medium">~{overview.averageTimePerQuestion}s / question</span>
             </p>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* 2. Performance Trend & AI Advisor Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Trend Line Chart (2 Columns) */}
-        <div className="lg:col-span-2 bg-slate-900/80 border border-slate-800/90 rounded-2xl p-5 flex flex-col justify-between">
+        <Card className="lg:col-span-2 p-5 flex flex-col justify-between shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
-              <h2 className="text-base font-semibold text-white flex items-center gap-2">
-                <Activity className="h-4 w-4 text-indigo-400" />
+              <h2 className="text-base font-semibold text-heading flex items-center gap-2">
+                <Activity className="h-4 w-4 text-indigo-500" />
                 Performance Trend (Recent Quizzes)
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted">
                 Tracking accuracy progression across sequential attempts
               </p>
             </div>
 
             {/* Trend Indicator Badge */}
             <div className="flex items-center gap-2">
-              <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
+              <Badge
+                variant={
                   trend.trend === 'improving'
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                    ? 'emerald'
                     : trend.trend === 'declining'
-                    ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
+                    ? 'rose'
                     : trend.trend === 'stable'
-                    ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                }`}
+                    ? 'cyan'
+                    : 'amber'
+                }
+                size="sm"
               >
-                {trend.trend === 'improving' && <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />}
-                {trend.trend === 'declining' && <TrendingDown className="h-3.5 w-3.5 text-rose-400" />}
-                {trend.trend === 'stable' && <Activity className="h-3.5 w-3.5 text-blue-400" />}
-                {trend.trend === 'insufficient_data' && <HelpCircle className="h-3.5 w-3.5 text-amber-400" />}
+                {trend.trend === 'improving' && <TrendingUp className="h-3.5 w-3.5 mr-1 inline" />}
+                {trend.trend === 'declining' && <TrendingDown className="h-3.5 w-3.5 mr-1 inline" />}
+                {trend.trend === 'stable' && <Activity className="h-3.5 w-3.5 mr-1 inline" />}
+                {trend.trend === 'insufficient_data' && <HelpCircle className="h-3.5 w-3.5 mr-1 inline" />}
                 {trend.trend.replace('_', ' ')}
                 {trend.delta !== 0 && ` (${trend.delta > 0 ? '+' : ''}${trend.delta}%)`}
-              </span>
+              </Badge>
             </div>
           </div>
 
@@ -384,13 +373,13 @@ export default function AnalyticsPage() {
                       y1={y}
                       x2={chartWidth - padding}
                       y2={y}
-                      stroke="#1e293b"
+                      stroke="var(--color-border)"
                       strokeDasharray="3 3"
                     />
                     <text
                       x={padding - 6}
                       y={y + 3}
-                      fill="#64748b"
+                      fill="var(--color-text-muted)"
                       fontSize="9"
                       textAnchor="end"
                     >
@@ -408,7 +397,7 @@ export default function AnalyticsPage() {
                 <path
                   d={pathD}
                   fill="none"
-                  stroke="#818cf8"
+                  stroke="#6366f1"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -422,8 +411,8 @@ export default function AnalyticsPage() {
                     cx={pt.x}
                     cy={pt.y}
                     r={hoveredPoint === idx ? 6 : 4}
-                    fill="#0f172a"
-                    stroke="#a5b4fc"
+                    fill="var(--color-bg-card)"
+                    stroke="#6366f1"
                     strokeWidth="2.5"
                     onMouseEnter={() => setHoveredPoint(idx)}
                     onMouseLeave={() => setHoveredPoint(null)}
@@ -431,7 +420,7 @@ export default function AnalyticsPage() {
                   <text
                     x={pt.x}
                     y={chartHeight - 8}
-                    fill="#64748b"
+                    fill="var(--color-text-muted)"
                     fontSize="9"
                     textAnchor="middle"
                   >
@@ -444,58 +433,50 @@ export default function AnalyticsPage() {
             {/* Hover Tooltip */}
             {hoveredPoint !== null && points[hoveredPoint] && (
               <div
-                className="absolute z-20 pointer-events-none transform -translate-x-1/2 -translate-y-full bg-slate-900/95 border border-indigo-500/40 px-3 py-2 rounded-lg shadow-xl text-xs"
+                className="absolute z-20 pointer-events-none transform -translate-x-1/2 -translate-y-full card-base border border-indigo-500/40 px-3 py-2 rounded-xl shadow-xl text-xs"
                 style={{
                   left: `${(points[hoveredPoint].x / chartWidth) * 100}%`,
                   top: `${(points[hoveredPoint].y / chartHeight) * 100 - 8}%`
                 }}
               >
-                <div className="font-semibold text-white">
+                <div className="font-semibold text-heading">
                   {points[hoveredPoint].data.quizTitle}
                 </div>
-                <div className="text-indigo-300 text-[11px] font-medium mt-0.5">
+                <div className="text-indigo-500 text-[11px] font-medium mt-0.5">
                   {points[hoveredPoint].data.percentage}% ({points[hoveredPoint].data.score}/{points[hoveredPoint].data.totalQuestions} pts)
                 </div>
-                <div className="text-slate-400 text-[10px] mt-0.5">
+                <div className="text-muted text-[10px] mt-0.5">
                   Module: {points[hoveredPoint].data.moduleCode} · {new Date(points[hoveredPoint].data.submittedAt).toLocaleDateString()}
                 </div>
               </div>
             )}
           </div>
 
-          <p className="text-slate-500 text-[11px] mt-4">
+          <p className="text-muted text-[11px] mt-4">
             {trend.reason}
           </p>
-        </div>
+        </Card>
 
         {/* AI Study Advice / Strategy Panel (1 Column) */}
-        <div className="bg-gradient-to-b from-indigo-950/40 via-slate-900/80 to-slate-900/80 border border-indigo-500/20 rounded-2xl p-5 flex flex-col justify-between">
+        <Card className="p-5 flex flex-col justify-between shadow-sm border-indigo-500/20">
           <div>
             <div className="flex items-center justify-between mb-3">
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-indigo-400 uppercase tracking-wider">
-                <Sparkles className="h-4 w-4 text-indigo-400" />
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-indigo-500 uppercase tracking-wider">
+                <Sparkles className="h-4 w-4" />
                 Study Recommendations
               </span>
-              <button
+              <Button
+                variant="outline"
+                size="xs"
+                icon={loadingAi ? RefreshCw : Brain}
                 onClick={handleGetAiAdvice}
-                disabled={loadingAi}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-[11px] font-medium transition"
+                loading={loadingAi}
               >
-                {loadingAi ? (
-                  <>
-                    <RefreshCw className="h-3 w-3 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Brain className="h-3 w-3" />
-                    AI Insights
-                  </>
-                )}
-              </button>
+                {loadingAi ? 'Analyzing...' : 'AI Insights'}
+              </Button>
             </div>
 
-            <h3 className="text-base font-bold text-white mb-2">
+            <h3 className="text-base font-bold text-heading mb-2">
               Actionable Study Plan
             </h3>
 
@@ -504,9 +485,9 @@ export default function AnalyticsPage() {
               {(aiAdvice?.advice || recommendations).slice(0, 3).map((rec, idx) => (
                 <div
                   key={idx}
-                  className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-xs text-slate-300"
+                  className="flex items-start gap-2.5 p-2.5 rounded-xl card-base border border-subtle text-xs text-body shadow-sm"
                 >
-                  <Lightbulb className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <Lightbulb className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
                   <span>{rec}</span>
                 </div>
               ))}
@@ -514,39 +495,29 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Quick Quiz CTA */}
-          <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs">
-            <span className="text-slate-400 text-[11px]">Ready to improve?</span>
+          <div className="mt-4 pt-3 border-t border-subtle flex items-center justify-between text-xs">
+            <span className="text-muted text-[11px]">Ready to improve?</span>
             <Link
               to="/quizzes"
-              className="text-indigo-400 hover:text-indigo-300 font-medium inline-flex items-center gap-1"
+              className="text-indigo-500 hover:opacity-80 font-medium inline-flex items-center gap-1"
             >
               Take practice quiz <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* 3. Navigation Tabs for In-Depth Analytics */}
-      <div className="border-b border-slate-800 mb-6 flex items-center gap-4">
-        {[
+      <Tabs
+        tabs={[
           { id: 'overview', label: 'Weak Topics & Breakdowns' },
           { id: 'modules', label: `Module Performance (${modulePerformance.length})` },
           { id: 'topics', label: `All Topics (${topicPerformance.length})` },
           { id: 'missed', label: `Frequently Missed (${frequentlyMissedQuestions.length})` }
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`pb-3 text-xs sm:text-sm font-semibold border-b-2 transition ${
-              activeTab === tab.id
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+        ]}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+      />
 
       {/* TAB CONTENT 1: Overview, Weak Topics & Breakdowns */}
       {activeTab === 'overview' && (
@@ -555,75 +526,72 @@ export default function AnalyticsPage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-rose-400" />
+                <h2 className="text-lg font-bold text-heading flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-rose-500" />
                   Weak Topic Intelligence
                 </h2>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted">
                   Topics prioritized by error rates, mistake volume, and difficulty weights
                 </p>
               </div>
             </div>
 
             {weakTopics.length === 0 ? (
-              <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 text-center text-slate-400 text-sm">
-                <CheckCircle2 className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
-                <span className="font-semibold text-white">No Critical Weak Areas Detected</span>
-                <p className="text-xs text-slate-400 mt-1">
+              <Card className="p-6 text-center text-muted text-sm">
+                <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+                <span className="font-semibold text-heading">No Critical Weak Areas Detected</span>
+                <p className="text-xs text-muted mt-1">
                   You are maintaining solid accuracy (≥60%) across all tested concepts.
                 </p>
-              </div>
+              </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {weakTopics.map((wt, idx) => (
-                  <div
+                  <Card
                     key={idx}
-                    className="bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-xl p-4 flex flex-col justify-between transition"
+                    className="p-4 flex flex-col justify-between transition hover:border-indigo-500/40 shadow-sm"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <span className="text-xs font-semibold text-slate-400">
+                        <span className="text-xs font-semibold text-muted">
                           {wt.moduleCode}
                         </span>
-                        <span
-                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                            wt.priority === 'HIGH'
-                              ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                              : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                          }`}
+                        <Badge
+                          variant={wt.priority === 'HIGH' ? 'rose' : 'amber'}
+                          size="xs"
                         >
                           {wt.priority} Priority
-                        </span>
+                        </Badge>
                       </div>
 
-                      <h3 className="text-sm font-bold text-white mb-2 line-clamp-1">
+                      <h3 className="text-sm font-bold text-heading mb-2 line-clamp-1">
                         {wt.topic}
                       </h3>
 
                       <div className="space-y-1 text-xs">
-                        <div className="flex items-center justify-between text-slate-400">
+                        <div className="flex items-center justify-between text-muted">
                           <span>Accuracy</span>
-                          <span className="font-semibold text-rose-400">{wt.accuracy}%</span>
+                          <span className="font-semibold text-rose-500">{wt.accuracy}%</span>
                         </div>
-                        <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                        <div className="w-full bg-subtle rounded-full h-1.5 overflow-hidden">
                           <div
                             className="bg-rose-500 h-full rounded-full"
                             style={{ width: `${wt.accuracy}%` }}
                           ></div>
                         </div>
-                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                        <div className="flex items-center justify-between text-[11px] text-muted pt-1">
                           <span>{wt.incorrect} mistakes / {wt.totalQuestions} questions</span>
                           <span>Level {Math.round(wt.averageDifficulty)}</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-slate-800/80">
-                      <p className="text-[11px] text-slate-400 italic">
+                    <div className="mt-4 pt-3 border-t border-subtle">
+                      <p className="text-[11px] text-muted italic">
                         "{wt.recommendation}"
                       </p>
                     </div>
-                  </div>
+                  </Card>
                 ))}
               </div>
             )}
@@ -632,38 +600,39 @@ export default function AnalyticsPage() {
           {/* Difficulty & Question Type Dual Breakdowns */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Difficulty Breakdown */}
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5">
-              <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
-                <Target className="h-4 w-4 text-indigo-400" />
+            <Card className="p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-heading mb-1 flex items-center gap-2">
+                <Target className="h-4 w-4 text-indigo-500" />
                 Performance by Difficulty Level
               </h3>
-              <p className="text-xs text-slate-400 mb-4">
+              <p className="text-xs text-muted mb-4">
                 Identifies whether conceptual challenges concentrate on advanced material
               </p>
 
               <div className="space-y-3">
                 {difficultyPerformance.map((diff) => (
-                  <div key={diff.difficulty} className="p-3 rounded-xl bg-slate-800/40 border border-slate-800">
+                  <div key={diff.difficulty} className="p-3 rounded-xl card-base border border-subtle shadow-sm">
                     <div className="flex items-center justify-between text-xs mb-1.5">
-                      <span className="font-medium text-slate-200">{diff.label}</span>
+                      <span className="font-medium text-heading">{diff.label}</span>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white">{diff.accuracy}%</span>
-                        <span
-                          className={`text-[10px] font-semibold uppercase px-1.5 py-0.2 rounded ${
+                        <span className="font-bold text-heading">{diff.accuracy}%</span>
+                        <Badge
+                          variant={
                             diff.status === 'strong'
-                              ? 'bg-emerald-500/10 text-emerald-400'
+                              ? 'emerald'
                               : diff.status === 'average'
-                              ? 'bg-amber-500/10 text-amber-400'
+                              ? 'amber'
                               : diff.status === 'weak'
-                              ? 'bg-rose-500/10 text-rose-400'
-                              : 'bg-slate-800 text-slate-400'
-                          }`}
+                              ? 'rose'
+                              : 'default'
+                          }
+                          size="xs"
                         >
                           {diff.status.replace('_', ' ')}
-                        </span>
+                        </Badge>
                       </div>
                     </div>
-                    <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                    <div className="w-full bg-subtle rounded-full h-1.5 overflow-hidden">
                       <div
                         className={`h-full rounded-full ${
                           diff.accuracy >= 80 ? 'bg-emerald-500' : diff.accuracy >= 60 ? 'bg-amber-500' : 'bg-rose-500'
@@ -671,42 +640,42 @@ export default function AnalyticsPage() {
                         style={{ width: `${diff.accuracy}%` }}
                       ></div>
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+                    <div className="flex items-center justify-between text-[11px] text-muted mt-1">
                       <span>{diff.correct} correct / {diff.total} total</span>
                       <span>{diff.attempted} attempted</span>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
 
             {/* Question Type Breakdown */}
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5">
+            <Card className="p-5 shadow-sm">
               <div className="flex items-center justify-between mb-1">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-purple-400" />
+                <h3 className="text-sm font-bold text-heading flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-purple-500" />
                   Performance by Question Type
                 </h3>
                 {weakestQuestionType && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                  <Badge variant="rose" size="xs">
                     Weakest: {weakestQuestionType}
-                  </span>
+                  </Badge>
                 )}
               </div>
-              <p className="text-xs text-slate-400 mb-4">
+              <p className="text-xs text-muted mb-4">
                 Compares factual recall vs scenario-based diagnostic accuracy
               </p>
 
               <div className="space-y-3">
                 {questionTypePerformance.map((item) => (
-                  <div key={item.questionType} className="p-3 rounded-xl bg-slate-800/40 border border-slate-800">
+                  <div key={item.questionType} className="p-3 rounded-xl card-base border border-subtle shadow-sm">
                     <div className="flex items-center justify-between text-xs mb-1.5">
-                      <span className="font-medium text-slate-200">
+                      <span className="font-medium text-heading">
                         {item.questionType.replace('_', ' ')}
                       </span>
-                      <span className="font-bold text-white">{item.accuracy}%</span>
+                      <span className="font-bold text-heading">{item.accuracy}%</span>
                     </div>
-                    <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                    <div className="w-full bg-subtle rounded-full h-1.5 overflow-hidden">
                       <div
                         className={`h-full rounded-full ${
                           item.accuracy >= 80 ? 'bg-emerald-500' : item.accuracy >= 60 ? 'bg-amber-500' : 'bg-indigo-500'
@@ -714,14 +683,14 @@ export default function AnalyticsPage() {
                         style={{ width: `${item.accuracy}%` }}
                       ></div>
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+                    <div className="flex items-center justify-between text-[11px] text-muted mt-1">
                       <span>{item.correct} correct / {item.total} total</span>
                       <span>{item.attempted} answered</span>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       )}
@@ -731,38 +700,39 @@ export default function AnalyticsPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {modulePerformance.map((mod) => (
-              <div
+              <Card
                 key={mod.moduleId}
-                className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between"
+                className="p-5 flex flex-col justify-between shadow-sm"
               >
                 <div>
                   <div className="flex items-start justify-between mb-2">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-indigo-950/80 text-indigo-400 border border-indigo-500/30">
+                    <Badge variant="indigo" size="sm">
                       {mod.moduleCode}
-                    </span>
-                    <span
-                      className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
+                    </Badge>
+                    <Badge
+                      variant={
                         mod.status === 'strong'
-                          ? 'bg-emerald-500/15 text-emerald-400'
+                          ? 'emerald'
                           : mod.status === 'average'
-                          ? 'bg-amber-500/15 text-amber-400'
-                          : 'bg-rose-500/15 text-rose-400'
-                      }`}
+                          ? 'amber'
+                          : 'rose'
+                      }
+                      size="xs"
                     >
                       {mod.status}
-                    </span>
+                    </Badge>
                   </div>
 
-                  <h3 className="text-base font-bold text-white mb-3">
+                  <h3 className="text-base font-bold text-heading mb-3">
                     {mod.moduleName}
                   </h3>
 
                   <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between text-slate-400">
+                    <div className="flex items-center justify-between text-muted">
                       <span>Module Accuracy</span>
-                      <span className="font-bold text-white">{mod.accuracy}%</span>
+                      <span className="font-bold text-heading">{mod.accuracy}%</span>
                     </div>
-                    <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-subtle rounded-full h-2 overflow-hidden">
                       <div
                         className={`h-full rounded-full ${
                           mod.accuracy >= 80 ? 'bg-emerald-500' : mod.accuracy >= 60 ? 'bg-amber-500' : 'bg-rose-500'
@@ -772,35 +742,37 @@ export default function AnalyticsPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-800 text-[11px]">
+                  <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-subtle text-[11px]">
                     <div>
-                      <span className="text-slate-500 block">Quizzes Done</span>
-                      <span className="font-semibold text-slate-200">{mod.quizzesCompleted}</span>
+                      <span className="text-muted block">Quizzes Done</span>
+                      <span className="font-semibold text-heading">{mod.quizzesCompleted}</span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block">Questions Solved</span>
-                      <span className="font-semibold text-slate-200">{mod.questionsAttempted}</span>
+                      <span className="text-muted block">Questions Solved</span>
+                      <span className="font-semibold text-heading">{mod.questionsAttempted}</span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block">Total Study Time</span>
-                      <span className="font-semibold text-slate-200">{formatSeconds(mod.totalTimeSpent)}</span>
+                      <span className="text-muted block">Total Study Time</span>
+                      <span className="font-semibold text-heading">{formatSeconds(mod.totalTimeSpent)}</span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block">Mean Score</span>
-                      <span className="font-semibold text-slate-200">{mod.averageScore} pts</span>
+                      <span className="text-muted block">Mean Score</span>
+                      <span className="font-semibold text-heading">{mod.averageScore} pts</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-800">
-                  <Link
-                    to={`/quizzes?module=${mod.moduleId}`}
-                    className="w-full py-1.5 px-3 rounded-lg bg-indigo-600/15 hover:bg-indigo-600/25 text-indigo-300 text-xs font-medium flex items-center justify-center gap-1 transition"
+                <div className="mt-4 pt-3 border-t border-subtle">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-center"
+                    onClick={() => window.location.assign(`/quizzes?module=${mod.moduleId}`)}
                   >
-                    Practice {mod.moduleCode} Quizzes <ArrowRight className="h-3 w-3" />
-                  </Link>
+                    Practice {mod.moduleCode} Quizzes <ArrowRight className="h-3 w-3 ml-1 inline" />
+                  </Button>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         </div>
@@ -808,10 +780,10 @@ export default function AnalyticsPage() {
 
       {/* TAB CONTENT 3: All Topics */}
       {activeTab === 'topics' && (
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden">
+        <Card className="overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-800/60 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <table className="w-full text-left text-xs text-body">
+              <thead className="bg-subtle text-muted uppercase text-[10px] tracking-wider border-b border-subtle">
                 <tr>
                   <th className="py-3 px-4">Topic</th>
                   <th className="py-3 px-4">Module</th>
@@ -821,16 +793,16 @@ export default function AnalyticsPage() {
                   <th className="py-3 px-4">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-subtle">
                 {topicPerformance.map((top, idx) => (
-                  <tr key={idx} className="hover:bg-slate-800/30 transition">
-                    <td className="py-3 px-4 font-semibold text-white">
+                  <tr key={idx} className="hover:bg-subtle transition">
+                    <td className="py-3 px-4 font-semibold text-heading">
                       {top.topic}
                     </td>
-                    <td className="py-3 px-4 text-slate-400">
+                    <td className="py-3 px-4 text-muted">
                       {top.moduleCode}
                     </td>
-                    <td className="py-3 px-4 text-slate-400">
+                    <td className="py-3 px-4 text-muted">
                       Level {Math.round(top.averageDifficulty)}
                     </td>
                     <td className="py-3 px-4">
@@ -838,8 +810,8 @@ export default function AnalyticsPage() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white w-8">{top.accuracy}%</span>
-                        <div className="w-20 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                        <span className="font-bold text-heading w-8">{top.accuracy}%</span>
+                        <div className="w-20 bg-subtle rounded-full h-1.5 overflow-hidden">
                           <div
                             className={`h-full rounded-full ${
                               top.accuracy >= 80 ? 'bg-emerald-500' : top.accuracy >= 60 ? 'bg-amber-500' : 'bg-rose-500'
@@ -850,81 +822,84 @@ export default function AnalyticsPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <span
-                        className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
+                      <Badge
+                        variant={
                           top.status === 'STRONG'
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            ? 'emerald'
                             : top.status === 'AVERAGE'
-                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            ? 'amber'
                             : top.status === 'WEAK'
-                            ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                            : 'bg-slate-800 text-slate-400'
-                        }`}
+                            ? 'rose'
+                            : 'default'
+                        }
+                        size="xs"
                       >
                         {top.status.replace('_', ' ')}
-                      </span>
+                      </Badge>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* TAB CONTENT 4: Frequently Missed Questions */}
       {activeTab === 'missed' && (
         <div className="space-y-3">
           {frequentlyMissedQuestions.length === 0 ? (
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 text-center text-slate-400 text-sm">
-              <CheckCircle2 className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
-              <span className="font-semibold text-white">No Problem Questions</span>
-              <p className="text-xs text-slate-400 mt-1">
+            <Card className="p-6 text-center text-muted text-sm shadow-sm">
+              <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+              <span className="font-semibold text-heading">No Problem Questions</span>
+              <p className="text-xs text-muted mt-1">
                 You currently have zero questions with repeated errors.
               </p>
-            </div>
+            </Card>
           ) : (
             frequentlyMissedQuestions.map((q) => (
-              <div
+              <Card
                 key={q.questionId}
-                className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm hover:border-indigo-500/30 transition"
               >
                 <div className="space-y-1 max-w-2xl">
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="font-semibold text-indigo-400">{q.moduleCode}</span>
-                    <span className="text-slate-600">·</span>
-                    <span className="text-slate-400">{q.topic}</span>
-                    <span className="text-slate-600">·</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
+                    <Badge variant="indigo" size="xs">
+                      {q.moduleCode}
+                    </Badge>
+                    <span className="text-muted">·</span>
+                    <span className="text-muted">{q.topic}</span>
+                    <span className="text-muted">·</span>
+                    <Badge variant="default" size="xs">
                       Level {q.difficulty}
-                    </span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
+                    </Badge>
+                    <Badge variant="default" size="xs">
                       {q.questionType}
-                    </span>
+                    </Badge>
                   </div>
-                  <p className="text-sm font-medium text-white line-clamp-2">
+                  <p className="text-sm font-medium text-heading line-clamp-2">
                     {q.questionText}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-4 text-xs flex-shrink-0">
                   <div className="text-right">
-                    <div className="font-bold text-rose-400">
+                    <div className="font-bold text-rose-500">
                       {q.timesIncorrect} Misses
                     </div>
-                    <div className="text-[11px] text-slate-500">
+                    <div className="text-[11px] text-muted">
                       {q.timesAttempted} attempts ({q.accuracy}%)
                     </div>
                   </div>
-                  <Link
-                    to="/quizzes"
-                    className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition"
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    icon={ArrowRight}
+                    onClick={() => window.location.assign('/quizzes')}
                     title="Practice again"
-                  >
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
+                  />
                 </div>
-              </div>
+              </Card>
             ))
           )}
         </div>

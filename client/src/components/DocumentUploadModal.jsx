@@ -1,6 +1,9 @@
 import { useState, useRef } from 'react';
 import { UploadCloud, FileText, AlertCircle, Loader2, X } from 'lucide-react';
 import documentService from '../services/document.service.js';
+import { Modal } from './ui/Modal.jsx';
+import { Button } from './ui/Button.jsx';
+import { Badge } from './ui/Badge.jsx';
 
 export default function DocumentUploadModal({
   isOpen,
@@ -8,7 +11,8 @@ export default function DocumentUploadModal({
   moduleId,
   moduleCode,
   moduleName,
-  onUploadSuccess
+  onUploadSuccess,
+  onSuccess
 }) {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -28,7 +32,6 @@ export default function DocumentUploadModal({
       return;
     }
 
-    // 25MB max
     if (selectedFile.size > 25 * 1024 * 1024) {
       setError('File size exceeds the 25MB maximum limit.');
       setFile(null);
@@ -68,8 +71,9 @@ export default function DocumentUploadModal({
     setError(null);
     try {
       const newDoc = await documentService.uploadDocument(moduleId, file);
-      if (onUploadSuccess) {
-        onUploadSuccess(newDoc);
+      const callback = onUploadSuccess || onSuccess;
+      if (callback) {
+        callback(newDoc);
       }
       onClose();
     } catch (err) {
@@ -80,32 +84,30 @@ export default function DocumentUploadModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="max-w-md w-full rounded-xl border border-slate-800 bg-[#0e1526] p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
-        <button
-          onClick={onClose}
-          disabled={uploading}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-md bg-slate-800 cursor-pointer disabled:opacity-50"
-        >
-          <X className="h-4 w-4" />
-        </button>
-
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
-              {moduleCode}
-            </span>
-            <span className="text-xs text-slate-400 truncate">{moduleName}</span>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Upload Academic Course PDF"
+      maxWidth="max-w-md"
+    >
+      <div className="space-y-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            {moduleCode && (
+              <Badge variant="indigo" size="xs">
+                {moduleCode}
+              </Badge>
+            )}
+            <span className="text-xs text-muted truncate">{moduleName}</span>
           </div>
-          <h2 className="text-base font-bold text-white">Upload Academic Course PDF</h2>
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+          <p className="text-xs text-muted leading-relaxed">
             Upload syllabus readings or lecture slides. The server will extract clean text and prepare metadata for the study engine.
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-950/40 border border-red-900/60 text-red-300 text-xs flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-500 text-xs flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
@@ -125,68 +127,62 @@ export default function DocumentUploadModal({
             onDragOver={handleDrag}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 ${
+            className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 ${
               dragActive
                 ? 'border-indigo-500 bg-indigo-500/10'
                 : file
-                ? 'border-emerald-500/60 bg-emerald-950/20'
-                : 'border-slate-800 hover:border-slate-700 bg-slate-900/40'
+                ? 'border-emerald-500/60 bg-emerald-500/10'
+                : 'border-subtle hover:border-indigo-500/50 bg-subtle/40'
             }`}
           >
             {file ? (
               <>
-                <div className="p-3 rounded-full bg-emerald-500/10 text-emerald-400">
+                <div className="p-3 rounded-2xl bg-emerald-500/15 text-emerald-500">
                   <FileText className="h-6 w-6" />
                 </div>
-                <div className="text-xs font-semibold text-white truncate max-w-xs">{file.name}</div>
-                <div className="text-[11px] text-slate-400">
+                <div className="text-xs font-semibold text-heading truncate max-w-xs">{file.name}</div>
+                <div className="text-[11px] text-muted">
                   {(file.size / (1024 * 1024)).toFixed(2)} MB &bull; Click or drop another to change
                 </div>
               </>
             ) : (
               <>
-                <div className="p-3 rounded-full bg-slate-800 text-slate-400">
+                <div className="p-3 rounded-2xl bg-subtle text-muted">
                   <UploadCloud className="h-6 w-6" />
                 </div>
-                <div className="text-xs font-medium text-slate-200">
+                <div className="text-xs font-medium text-heading">
                   Click to select or drag &amp; drop PDF
                 </div>
-                <div className="text-[11px] text-slate-500">
+                <div className="text-[11px] text-muted">
                   PDF format only &bull; Up to 25MB
                 </div>
               </>
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-            <button
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-subtle">
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={onClose}
               disabled={uploading}
-              className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium cursor-pointer disabled:opacity-50"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              variant="primary"
+              size="sm"
+              icon={UploadCloud}
               disabled={!file || uploading}
-              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium flex items-center gap-2 disabled:opacity-50 cursor-pointer shadow-sm shadow-indigo-600/30"
+              loading={uploading}
             >
-              {uploading ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Uploading PDF...</span>
-                </>
-              ) : (
-                <>
-                  <UploadCloud className="h-3.5 w-3.5" />
-                  <span>Upload &amp; Ingest</span>
-                </>
-              )}
-            </button>
+              {uploading ? 'Uploading PDF...' : 'Upload & Ingest'}
+            </Button>
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

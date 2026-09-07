@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import { ThemeProvider } from './context/ThemeContext.jsx';
 import Navbar from './components/Navbar.jsx';
+import AppShell from './layouts/AppShell.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
@@ -15,151 +17,196 @@ import QuizResultPage from './pages/QuizResultPage.jsx';
 import QuizHistoryPage from './pages/QuizHistoryPage.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import Phase1OverviewPage from './pages/Phase1OverviewPage.jsx';
+import DashboardPage from './pages/DashboardPage.jsx';
 
 function RootRedirect() {
   const { isAuthenticated, loading } = useAuth();
   if (loading) return null;
-  return <Navigate to={isAuthenticated ? "/assistant" : "/login"} replace />;
+  return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
+}
+
+function PublicLayout({ children }) {
+  return (
+    <div className="min-h-screen bg-[#090d16] text-slate-100 light:bg-slate-50 light:text-slate-900 flex flex-col selection:bg-indigo-500 selection:text-white transition-colors duration-200">
+      <Navbar />
+      <main className="flex-1 flex flex-col">{children}</main>
+      <footer className="border-t border-slate-800/60 light:border-slate-200 py-6 text-center text-xs text-slate-500 light:text-slate-400">
+        StudyAI &bull; AI-Powered University Learning Platform
+      </footer>
+    </div>
+  );
+}
+
+function SystemStatusRoute() {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return null;
+  if (isAuthenticated) {
+    return (
+      <AppShell>
+        <Phase1OverviewPage />
+      </AppShell>
+    );
+  }
+  return (
+    <PublicLayout>
+      <Phase1OverviewPage />
+    </PublicLayout>
+  );
 }
 
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
-          <Navbar />
-          <main className="flex-1">
-            <Routes>
-              {/* Root redirect */}
-              <Route path="/" element={<RootRedirect />} />
+      <ThemeProvider>
+        <AuthProvider>
+          <Routes>
+            {/* Root redirect */}
+            <Route path="/" element={<RootRedirect />} />
 
-              {/* Public Auth Routes */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+            {/* Public Auth Routes */}
+            <Route
+              path="/login"
+              element={
+                <PublicLayout>
+                  <LoginPage />
+                </PublicLayout>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <PublicLayout>
+                  <RegisterPage />
+                </PublicLayout>
+              }
+            />
 
-              {/* Protected Student / Shared Routes */}
-              <Route
-                path="/assistant"
-                element={
-                  <ProtectedRoute>
-                    <StudyAssistantPage />
-                  </ProtectedRoute>
-                }
-              />
+            {/* Protected Student / Shared Routes (wrapped in AppShell via ProtectedRoute) */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
 
-              <Route
-                path="/summaries"
-                element={
-                  <ProtectedRoute>
-                    <LectureSummariesPage />
-                  </ProtectedRoute>
-                }
-              />
+            <Route
+              path="/assistant"
+              element={
+                <ProtectedRoute>
+                  <StudyAssistantPage />
+                </ProtectedRoute>
+              }
+            />
 
-              <Route
-                path="/questions"
-                element={
-                  <ProtectedRoute>
-                    <ExamQuestionsPage />
-                  </ProtectedRoute>
-                }
-              />
+            <Route
+              path="/summaries"
+              element={
+                <ProtectedRoute>
+                  <LectureSummariesPage />
+                </ProtectedRoute>
+              }
+            />
 
-              {/* Protected Quiz System Routes (Phase 10) */}
-              <Route
-                path="/quizzes"
-                element={
-                  <ProtectedRoute>
-                    <QuizPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/quizzes/:quizId"
-                element={
-                  <ProtectedRoute>
-                    <QuizPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/quizzes/attempt/:attemptId"
-                element={
-                  <ProtectedRoute>
-                    <QuizPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/quiz-results/:attemptId"
-                element={
-                  <ProtectedRoute>
-                    <QuizResultPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/quiz-history"
-                element={
-                  <ProtectedRoute>
-                    <QuizHistoryPage />
-                  </ProtectedRoute>
-                }
-              />
+            <Route
+              path="/questions"
+              element={
+                <ProtectedRoute>
+                  <ExamQuestionsPage />
+                </ProtectedRoute>
+              }
+            />
 
-              {/* Protected Performance Analytics Route (Phase 11) */}
-              <Route
-                path="/analytics"
-                element={
-                  <ProtectedRoute>
-                    <AnalyticsPage />
-                  </ProtectedRoute>
-                }
-              />
+            {/* Protected Quiz System Routes */}
+            <Route
+              path="/quizzes"
+              element={
+                <ProtectedRoute>
+                  <QuizPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quizzes/:quizId"
+              element={
+                <ProtectedRoute>
+                  <QuizPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quizzes/attempt/:attemptId"
+              element={
+                <ProtectedRoute>
+                  <QuizPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quiz-results/:attemptId"
+              element={
+                <ProtectedRoute>
+                  <QuizResultPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quiz-history"
+              element={
+                <ProtectedRoute>
+                  <QuizHistoryPage />
+                </ProtectedRoute>
+              }
+            />
 
-              <Route
-                path="/modules"
-                element={
-                  <ProtectedRoute>
-                    <ModulesPage />
-                  </ProtectedRoute>
-                }
-              />
+            {/* Protected Performance Analytics Route */}
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute>
+                  <AnalyticsPage />
+                </ProtectedRoute>
+              }
+            />
 
-              {/* Protected Semantic Search Route (Phase 6) */}
-              <Route
-                path="/search"
-                element={
-                  <ProtectedRoute>
-                    <SemanticSearchPage />
-                  </ProtectedRoute>
-                }
-              />
+            <Route
+              path="/modules"
+              element={
+                <ProtectedRoute>
+                  <ModulesPage />
+                </ProtectedRoute>
+              }
+            />
 
+            {/* Protected Semantic Search Route */}
+            <Route
+              path="/search"
+              element={
+                <ProtectedRoute>
+                  <SemanticSearchPage />
+                </ProtectedRoute>
+              }
+            />
 
+            {/* Protected Admin Only Routes */}
+            <Route
+              path="/admin/modules"
+              element={
+                <ProtectedRoute adminOnly={true}>
+                  <AdminModulesPage />
+                </ProtectedRoute>
+              }
+            />
 
-              {/* Protected Admin Only Routes */}
-              <Route
-                path="/admin/modules"
-                element={
-                  <ProtectedRoute adminOnly={true}>
-                    <AdminModulesPage />
-                  </ProtectedRoute>
-                }
-              />
+            {/* System Status Route (Responsive to Auth state) */}
+            <Route path="/system-status" element={<SystemStatusRoute />} />
 
-              {/* Preserved Phase 1 System Health & Architecture */}
-              <Route path="/system-status" element={<Phase1OverviewPage />} />
-
-              {/* Fallback */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
-          <footer className="border-t border-slate-800/60 py-6 text-center text-xs text-slate-500">
-            StudyAI &bull; AI-Powered University Learning Platform &bull; Phase 10: Interactive AI Quiz System
-          </footer>
-        </div>
-      </AuthProvider>
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

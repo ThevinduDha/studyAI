@@ -19,6 +19,13 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { moduleService } from '../services/module.service.js';
 import { documentService } from '../services/document.service.js';
 import { summaryService } from '../services/summary.service.js';
+import { PageHeader } from '../components/ui/PageHeader.jsx';
+import { Button } from '../components/ui/Button.jsx';
+import { Badge } from '../components/ui/Badge.jsx';
+import { Card } from '../components/ui/Card.jsx';
+import { Select } from '../components/ui/Select.jsx';
+import { EmptyState } from '../components/ui/EmptyState.jsx';
+import { Skeleton, SkeletonCard } from '../components/ui/Skeleton.jsx';
 
 export default function LectureSummariesPage() {
   const { user, isAdmin } = useAuth();
@@ -89,7 +96,7 @@ export default function LectureSummariesPage() {
     fetchDocuments();
   }, [selectedModule]);
 
-  // 3. Check for existing summary when document changes (WITHOUT triggering generation)
+  // 3. Check for existing summary when document changes
   useEffect(() => {
     if (!selectedDocument) {
       setSummary(null);
@@ -103,7 +110,6 @@ export default function LectureSummariesPage() {
         const existing = await summaryService.getSummary(selectedDocument);
         setSummary(existing);
       } catch (err) {
-        // 404 indicates no summary exists yet - expected normal state
         if (err.statusCode === 404 || err.code === 'SUMMARY_NOT_FOUND') {
           setSummary(null);
         } else {
@@ -162,49 +168,33 @@ export default function LectureSummariesPage() {
   const selectedDocObj = documents.find((d) => d._id === selectedDocument);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800/80 pb-6">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
-              <FileText className="h-6 w-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
-                Lecture Summaries
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-900/60 text-indigo-300 border border-indigo-700/50">
-                  Phase 8
-                </span>
-              </h1>
-              <p className="text-sm text-slate-400 mt-0.5">
-                AI-powered exam-oriented study summaries strictly grounded in your course materials
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">
-            <ShieldCheck className="h-3.5 w-3.5" />
+      <PageHeader
+        badge="Phase 8"
+        badgeVariant="indigo"
+        title="Lecture Summaries"
+        icon={FileText}
+        subtitle="AI-powered exam-oriented study summaries strictly grounded in your course materials."
+        actions={
+          <Badge variant="emerald" size="md">
+            <ShieldCheck className="h-3.5 w-3.5 mr-1 inline" />
             Zero-Hallucination Grounded
-          </span>
-        </div>
-      </div>
+          </Badge>
+        }
+      />
 
       {/* Control Panel: Module & Document Selectors */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900/60 border border-slate-800/80 rounded-xl p-5 shadow-sm">
-        {/* Module Selector */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-            1. Select Course Module
-          </label>
-          <div className="relative">
-            <select
+      <Card className="p-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Select
+              id="summary-module"
+              label="1. Select Course Module"
+              icon={BookOpen}
               value={selectedModule}
               onChange={(e) => setSelectedModule(e.target.value)}
               disabled={loadingModules || generating}
-              className="w-full appearance-none bg-slate-800/90 border border-slate-700 text-slate-200 text-sm rounded-lg px-3.5 py-2.5 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 disabled:opacity-50 transition"
             >
               <option value="">-- Choose an Enrolled Module --</option>
               {modules.map((m) => (
@@ -212,27 +202,20 @@ export default function LectureSummariesPage() {
                   {m.code || m.moduleCode} — {m.name || m.moduleName}
                 </option>
               ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
-              <ChevronRight className="h-4 w-4 rotate-90" />
-            </div>
+            </Select>
+            {loadingModules && (
+              <p className="text-xs text-muted mt-1.5">Loading enrolled modules...</p>
+            )}
           </div>
-          {loadingModules && (
-            <p className="text-xs text-slate-500 mt-1">Loading enrolled modules...</p>
-          )}
-        </div>
 
-        {/* Document Selector */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-            2. Select Lecture / Document
-          </label>
-          <div className="relative">
-            <select
+          <div>
+            <Select
+              id="summary-doc"
+              label="2. Select Lecture / Document"
+              icon={FileText}
               value={selectedDocument}
               onChange={(e) => setSelectedDocument(e.target.value)}
               disabled={!selectedModule || loadingDocs || generating || documents.length === 0}
-              className="w-full appearance-none bg-slate-800/90 border border-slate-700 text-slate-200 text-sm rounded-lg px-3.5 py-2.5 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 disabled:opacity-50 transition"
             >
               {!selectedModule ? (
                 <option value="">First select a module above</option>
@@ -245,276 +228,281 @@ export default function LectureSummariesPage() {
                   </option>
                 ))
               )}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
-              <ChevronRight className="h-4 w-4 rotate-90" />
-            </div>
+            </Select>
+            {loadingDocs && (
+              <p className="text-xs text-muted mt-1.5">Loading module documents...</p>
+            )}
           </div>
-          {loadingDocs && (
-            <p className="text-xs text-slate-500 mt-1">Loading module documents...</p>
-          )}
         </div>
-      </div>
+      </Card>
 
       {/* Alerts */}
       {error && (
-        <div className="flex items-center gap-3 p-4 rounded-lg bg-red-950/40 border border-red-800/60 text-red-300 text-sm">
-          <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-400" />
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-500 text-sm">
+          <AlertCircle className="h-5 w-5 flex-shrink-0" />
           <p>{error}</p>
         </div>
       )}
 
       {successMsg && (
-        <div className="flex items-center gap-3 p-4 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 text-sm">
-          <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-400" />
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-500 text-sm">
+          <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
           <p>{successMsg}</p>
         </div>
       )}
 
       {/* Action / Status Card */}
       {selectedDocument && !checkingExisting && (
-        <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <Card className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 flex-shrink-0">
-              <FileText className="h-5 w-5 text-indigo-400" />
+            <div className="h-10 w-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500 flex-shrink-0">
+              <FileText className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-100 text-sm">
+              <h3 className="font-semibold text-heading text-sm">
                 {selectedDocObj?.originalName || 'Selected Lecture'}
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <div className="text-xs text-muted mt-0.5">
                 {summary ? (
-                  <span className="text-emerald-400 flex items-center gap-1">
+                  <span className="text-emerald-500 flex items-center gap-1 font-medium">
                     <CheckCircle2 className="h-3.5 w-3.5 inline" /> Summary available (Version {summary.version}) &bull; Generated {new Date(summary.generatedAt).toLocaleDateString()}
                   </span>
                 ) : (
                   <span>No summary generated yet for this document.</span>
                 )}
-              </p>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             {summary ? (
-              <button
+              <Button
+                variant="outline"
+                size="sm"
+                icon={RotateCw}
                 onClick={handleRegenerate}
-                disabled={generating}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 hover:border-slate-600 transition disabled:opacity-50 cursor-pointer"
+                loading={generating}
               >
-                <RotateCw className={`h-3.5 w-3.5 ${generating ? 'animate-spin' : ''}`} />
                 {generating ? 'Regenerating...' : 'Regenerate Summary'}
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
+                variant="primary"
+                size="md"
+                icon={Sparkles}
                 onClick={handleGenerate}
-                disabled={generating}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm shadow-indigo-600/30 transition disabled:opacity-50 cursor-pointer"
+                loading={generating}
               >
-                <Sparkles className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
                 {generating ? 'Generating Summary...' : 'Generate Summary'}
-              </button>
+              </Button>
             )}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Loading Skeleton */}
       {generating && (
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-8 space-y-6 text-center animate-pulse">
+        <Card className="p-8 space-y-6 text-center animate-pulse">
           <div className="flex flex-col items-center justify-center gap-3">
-            <div className="p-3 rounded-full bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+            <div className="p-3 rounded-2xl bg-indigo-500/15 text-indigo-500 border border-indigo-500/30">
               <Sparkles className="h-8 w-8 animate-spin" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-200">
+            <h3 className="text-lg font-semibold text-heading">
               Synthesizing Exam-Oriented Lecture Summary
             </h3>
-            <p className="text-xs text-slate-400 max-w-md">
+            <p className="text-xs text-muted max-w-md">
               Extracting key concepts, important points, likely exam questions, definitions, and application citations directly from the lecture material...
             </p>
           </div>
           <div className="space-y-3 max-w-2xl mx-auto pt-4">
-            <div className="h-4 bg-slate-800 rounded w-3/4 mx-auto"></div>
-            <div className="h-4 bg-slate-800 rounded w-5/6 mx-auto"></div>
-            <div className="h-4 bg-slate-800 rounded w-2/3 mx-auto"></div>
+            <Skeleton height="h-4" className="w-3/4 mx-auto" />
+            <Skeleton height="h-4" className="w-5/6 mx-auto" />
+            <Skeleton height="h-4" className="w-2/3 mx-auto" />
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Summary Content View */}
       {summary && !generating && (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-slide-up">
           {/* Summary Header Card */}
-          <div className="bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-900 border border-indigo-800/40 rounded-xl p-6 shadow-sm">
+          <Card className="p-6 border-indigo-500/30 shadow-md">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-900/60 text-indigo-300 border border-indigo-700/60">
-                  Version {summary.version} &bull; Exam Focus
-                </span>
-                <h2 className="text-xl sm:text-2xl font-bold text-white mt-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="indigo" size="xs">
+                    Version {summary.version}
+                  </Badge>
+                  <Badge variant="emerald" size="xs">
+                    Exam Focus
+                  </Badge>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold text-heading mt-2">
                   {summary.title}
                 </h2>
-                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 mt-2">
+                <div className="flex flex-wrap items-center gap-4 text-xs text-muted mt-2">
                   <span className="flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5 text-slate-500" />
+                    <Clock className="h-3.5 w-3.5" />
                     Generated: {new Date(summary.generatedAt).toLocaleString()}
                   </span>
                   <span>&bull;</span>
-                  <span>Model: <code className="text-indigo-300">{summary.model}</code></span>
+                  <span>Model: <code className="text-indigo-500 font-mono">{summary.model}</code></span>
                   <span>&bull;</span>
-                  <span className="text-emerald-400 font-medium">Status: {summary.status}</span>
+                  <span className="text-emerald-500 font-medium">Status: {summary.status}</span>
                 </div>
               </div>
 
-              <button
+              <Button
+                variant="outline"
+                size="xs"
+                icon={RotateCw}
                 onClick={handleRegenerate}
-                disabled={generating}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition flex-shrink-0 cursor-pointer"
+                loading={generating}
                 title="Regenerate summary with latest document context"
               >
-                <RotateCw className="h-3.5 w-3.5" />
                 Regenerate
-              </button>
+              </Button>
             </div>
 
             {/* Overview */}
-            <div className="mt-6 pt-5 border-t border-slate-800/80">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mb-2.5">
-                <BookOpen className="h-3.5 w-3.5 text-indigo-400" />
+            <div className="mt-6 pt-5 border-t border-subtle">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-1.5 mb-2.5">
+                <BookOpen className="h-3.5 w-3.5 text-indigo-500" />
                 Executive Overview
               </h3>
-              <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-line">
+              <p className="text-sm text-body leading-relaxed whitespace-pre-line">
                 {summary.overview}
               </p>
             </div>
-          </div>
+          </Card>
 
           {/* Key Concepts */}
           {summary.keyConcepts && summary.keyConcepts.length > 0 && (
-            <div className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-6 space-y-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                <Layers className="h-4 w-4 text-indigo-400" />
+            <Card className="p-6 space-y-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-heading flex items-center gap-2">
+                <Layers className="h-4 w-4 text-indigo-500" />
                 Key Concepts ({summary.keyConcepts.length})
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {summary.keyConcepts.map((concept, idx) => (
                   <div
                     key={idx}
-                    className="p-4 rounded-lg bg-slate-800/60 border border-slate-700/60 hover:border-indigo-500/40 transition"
+                    className="p-4 rounded-xl card-base border border-subtle hover:border-indigo-500/40 transition shadow-sm"
                   >
-                    <div className="flex items-center gap-2 font-semibold text-slate-100 text-sm mb-1.5">
-                      <span className="flex items-center justify-center h-5 w-5 rounded-full bg-indigo-600/30 text-indigo-300 text-xs font-bold">
+                    <div className="flex items-center gap-2 font-semibold text-heading text-sm mb-1.5">
+                      <span className="flex items-center justify-center h-5 w-5 rounded-full bg-indigo-500/20 text-indigo-500 text-xs font-bold shrink-0">
                         {idx + 1}
                       </span>
-                      {concept.title}
+                      <span>{concept.title}</span>
                     </div>
-                    <p className="text-xs text-slate-300 leading-relaxed pl-7">
+                    <p className="text-xs text-muted leading-relaxed pl-7">
                       {concept.explanation}
                     </p>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Exam Focus & Important Points Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Exam Focus */}
             {summary.examFocus && summary.examFocus.length > 0 && (
-              <div className="bg-slate-900/70 border border-amber-900/40 rounded-xl p-6 space-y-3">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
-                  <Star className="h-4 w-4 text-amber-400 fill-amber-400/20" />
+              <Card className="p-6 space-y-3 border-amber-500/30">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-amber-500 flex items-center gap-2">
+                  <Star className="h-4 w-4 fill-amber-500/20" />
                   Exam Focus &amp; Likely Questions
                 </h3>
-                <ul className="space-y-2.5 text-xs text-slate-200">
+                <ul className="space-y-2.5 text-xs text-body">
                   {summary.examFocus.map((item, idx) => (
-                    <li key={idx} className="flex items-start gap-2.5 p-2 rounded-lg bg-amber-950/20 border border-amber-800/30">
-                      <span className="text-amber-400 font-bold mt-0.5">★</span>
+                    <li key={idx} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                      <span className="text-amber-500 font-bold mt-0.5">★</span>
                       <span className="leading-relaxed">{item}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
+              </Card>
             )}
 
             {/* Important Points */}
             {summary.importantPoints && summary.importantPoints.length > 0 && (
-              <div className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-6 space-y-3">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              <Card className="p-6 space-y-3 border-emerald-500/30">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
                   Essential Takeaways
                 </h3>
-                <ul className="space-y-2.5 text-xs text-slate-200">
+                <ul className="space-y-2.5 text-xs text-body">
                   {summary.importantPoints.map((point, idx) => (
-                    <li key={idx} className="flex items-start gap-2.5 p-2 rounded-lg bg-emerald-950/20 border border-emerald-800/30">
-                      <span className="text-emerald-400 font-bold mt-0.5">✓</span>
+                    <li key={idx} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                      <span className="text-emerald-500 font-bold mt-0.5">✓</span>
                       <span className="leading-relaxed">{point}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
+              </Card>
             )}
           </div>
 
           {/* Technical Definitions */}
           {summary.definitions && summary.definitions.length > 0 && (
-            <div className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-6 space-y-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                <Bookmark className="h-4 w-4 text-indigo-400" />
+            <Card className="p-6 space-y-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-heading flex items-center gap-2">
+                <Bookmark className="h-4 w-4 text-indigo-500" />
                 Glossary &amp; Technical Definitions ({summary.definitions.length})
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {summary.definitions.map((d, idx) => (
-                  <div key={idx} className="p-3.5 rounded-lg bg-slate-800/50 border border-slate-700/60">
-                    <span className="font-semibold text-xs text-indigo-300 block mb-1">
+                  <div key={idx} className="p-3.5 rounded-xl card-base border border-subtle shadow-sm">
+                    <span className="font-semibold text-xs text-indigo-500 block mb-1">
                       {d.term}
                     </span>
-                    <p className="text-xs text-slate-300 leading-relaxed">
+                    <p className="text-xs text-muted leading-relaxed">
                       {d.definition}
                     </p>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Practical Examples */}
           {summary.examples && summary.examples.length > 0 && (
-            <div className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-6 space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                <Lightbulb className="h-4 w-4 text-yellow-400" />
+            <Card className="p-6 space-y-3">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-heading flex items-center gap-2">
+                <Lightbulb className="h-4 w-4 text-yellow-500" />
                 Examples &amp; Case Studies
               </h3>
               <div className="space-y-2">
                 {summary.examples.map((ex, idx) => (
-                  <div key={idx} className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/40 text-xs text-slate-300 leading-relaxed flex items-start gap-2.5">
-                    <span className="text-yellow-400 font-bold">•</span>
+                  <div key={idx} className="p-3 rounded-xl card-base border border-subtle text-xs text-body leading-relaxed flex items-start gap-2.5 shadow-sm">
+                    <span className="text-yellow-500 font-bold">•</span>
                     <span>{ex}</span>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Source Attribution & Citations */}
           {summary.sourceChunks && summary.sourceChunks.length > 0 && (
-            <div className="bg-slate-900/50 border border-slate-800/80 rounded-xl p-6 space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5 text-slate-400" />
+            <Card className="p-6 space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5" />
                 Grounded Source Material ({summary.sourceChunks.length} chunks synthesized)
               </h3>
               <div className="flex flex-wrap gap-2.5 pt-1">
                 {summary.sourceChunks.map((src, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-800/80 border border-slate-700 text-[11px] text-slate-300"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg card-base border border-subtle text-[11px] text-body shadow-sm"
                   >
-                    <FileText className="h-3 w-3 text-indigo-400" />
-                    <span className="font-medium text-slate-200">{src.documentName || 'Lecture'}</span>
-                    <span className="text-slate-500">&bull;</span>
+                    <FileText className="h-3 w-3 text-indigo-500" />
+                    <span className="font-medium text-heading">{src.documentName || 'Lecture'}</span>
+                    <span className="text-muted">&bull;</span>
                     <span>Chunk #{src.chunkIndex}</span>
                     {src.pageStart !== null && (
                       <>
-                        <span className="text-slate-500">&bull;</span>
+                        <span className="text-muted">&bull;</span>
                         <span>
                           p. {src.pageStart}
                           {src.pageEnd && src.pageEnd !== src.pageStart ? `–${src.pageEnd}` : ''}
@@ -523,8 +511,8 @@ export default function LectureSummariesPage() {
                     )}
                     {src.sectionHeading && (
                       <>
-                        <span className="text-slate-500">&bull;</span>
-                        <span className="text-slate-400 italic max-w-[120px] truncate">
+                        <span className="text-muted">&bull;</span>
+                        <span className="text-muted italic max-w-[120px] truncate">
                           {src.sectionHeading}
                         </span>
                       </>
@@ -532,20 +520,18 @@ export default function LectureSummariesPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
         </div>
       )}
 
       {/* Empty State when no document selected */}
       {!selectedDocument && !loadingModules && (
-        <div className="text-center py-16 px-4 rounded-xl border border-dashed border-slate-800 bg-slate-900/20">
-          <FileText className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-          <h3 className="text-base font-semibold text-slate-300">No Lecture Selected</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-            Choose an enrolled course module and a lecture above to view or generate an exam-focused study summary.
-          </p>
-        </div>
+        <EmptyState
+          icon={FileText}
+          title="No Lecture Selected"
+          description="Choose an enrolled course module and a lecture above to view or generate an exam-focused study summary."
+        />
       )}
     </div>
   );

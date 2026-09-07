@@ -16,6 +16,12 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { moduleService } from '../services/module.service.js';
 import { documentService } from '../services/document.service.js';
 import { searchRetrieval } from '../services/retrieval.service.js';
+import { PageHeader } from '../components/ui/PageHeader.jsx';
+import { Button } from '../components/ui/Button.jsx';
+import { Badge } from '../components/ui/Badge.jsx';
+import { Card } from '../components/ui/Card.jsx';
+import { Select } from '../components/ui/Select.jsx';
+import { EmptyState } from '../components/ui/EmptyState.jsx';
 
 export default function SemanticSearchPage() {
   const { user, isAdmin } = useAuth();
@@ -107,33 +113,23 @@ export default function SemanticSearchPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-            Phase 6
-          </span>
-          <span className="text-xs text-slate-400 font-mono">
-            MongoDB Atlas $vectorSearch • Cosine Similarity
-          </span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-2">
-          <Search className="h-7 w-7 text-indigo-400" />
-          Knowledge Search
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Perform dense vector semantic retrieval on course lecture chunks. The query is converted into a 768-dimensional embedding using Google Gemini (<code className="text-slate-300">gemini-embedding-2</code>) and matched using cosine similarity in Atlas Vector Search.
-        </p>
-      </div>
+      <PageHeader
+        badge="Phase 6 Retrieval"
+        badgeVariant="indigo"
+        title="Knowledge Search"
+        icon={Search}
+        subtitle="Perform dense vector semantic retrieval on course lecture chunks using 768-dimensional Gemini embeddings and MongoDB Atlas Vector Search."
+      />
 
       {/* Scope Notice */}
       {!isAdmin && modules.length === 0 && !loadingModules && (
-        <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm flex items-start gap-3">
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-500 text-sm flex items-start gap-3">
           <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
           <div>
             <p className="font-medium">No Enrolled Modules</p>
-            <p className="text-xs text-amber-300/80 mt-0.5">
+            <p className="text-xs opacity-90 mt-0.5">
               You are not enrolled in any modules yet. As a student, semantic retrieval is strictly scoped to your enrolled courses. Please visit Course Modules and enroll in a course to search its materials.
             </p>
           </div>
@@ -141,15 +137,15 @@ export default function SemanticSearchPage() {
       )}
 
       {/* Search Input Card */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl mb-8 backdrop-blur-sm">
+      <Card className="p-6 shadow-md">
         <form onSubmit={handleSearch} className="space-y-6">
           {/* Question Textarea */}
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label htmlFor="search-question" className="block text-sm font-medium text-slate-200">
+              <label htmlFor="search-question" className="block text-sm font-medium text-heading">
                 Search Question or Academic Concept
               </label>
-              <span className={`text-xs ${question.length > 1900 ? 'text-amber-400' : 'text-slate-500'}`}>
+              <span className={`text-xs ${question.length > 1900 ? 'text-amber-500' : 'text-muted'}`}>
                 {question.length} / 2000 chars
               </span>
             </div>
@@ -160,25 +156,22 @@ export default function SemanticSearchPage() {
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="e.g. What is the difference between supervised and unsupervised learning algorithms?"
               maxLength={2000}
-              className="w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/60 transition resize-y"
+              className="w-full p-4 rounded-xl input-base text-sm resize-y"
               required
             />
           </div>
 
           {/* Filters Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-slate-800/60">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-subtle">
             {/* Module Filter */}
             <div>
-              <label htmlFor="search-module" className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1">
-                <BookOpen className="h-3.5 w-3.5 text-indigo-400" />
-                Filter by Module {isAdmin ? '(Optional)' : ''}
-              </label>
-              <select
+              <Select
                 id="search-module"
+                label={`Filter by Module ${isAdmin ? '(Optional)' : ''}`}
+                icon={BookOpen}
                 value={selectedModule}
                 onChange={(e) => setSelectedModule(e.target.value)}
                 disabled={loadingModules || modules.length === 0}
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
               >
                 <option value="">
                   {isAdmin ? 'All Modules (Global Scope)' : 'All Enrolled Modules'}
@@ -188,21 +181,18 @@ export default function SemanticSearchPage() {
                     {m.moduleCode} — {m.moduleName}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {/* Document Filter */}
             <div>
-              <label htmlFor="search-document" className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1">
-                <FileText className="h-3.5 w-3.5 text-indigo-400" />
-                Filter by Document (Optional)
-              </label>
-              <select
+              <Select
                 id="search-document"
+                label="Filter by Document (Optional)"
+                icon={FileText}
                 value={selectedDocument}
                 onChange={(e) => setSelectedDocument(e.target.value)}
                 disabled={!selectedModule || loadingDocs || documents.length === 0}
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
               >
                 <option value="">
                   {!selectedModule
@@ -216,17 +206,17 @@ export default function SemanticSearchPage() {
                     {doc.originalName} ({doc.chunkCount} chunks)
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {/* Top-K Selector */}
             <div>
-              <label htmlFor="search-topk" className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center justify-between">
+              <label htmlFor="search-topk" className="block text-xs font-medium text-muted mb-1.5 flex items-center justify-between">
                 <span className="flex items-center gap-1">
-                  <Sliders className="h-3.5 w-3.5 text-indigo-400" />
+                  <Sliders className="h-3.5 w-3.5 text-indigo-500" />
                   Top-K Results
                 </span>
-                <span className="font-mono text-indigo-400 font-bold">{topK}</span>
+                <span className="font-mono text-indigo-500 font-bold">{topK}</span>
               </label>
               <input
                 type="range"
@@ -235,9 +225,9 @@ export default function SemanticSearchPage() {
                 max={20}
                 value={topK}
                 onChange={(e) => setTopK(parseInt(e.target.value, 10))}
-                className="w-full accent-indigo-500 cursor-pointer h-2 bg-slate-800 rounded-lg"
+                className="w-full accent-indigo-600 cursor-pointer h-2 bg-subtle rounded-lg"
               />
-              <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+              <div className="flex justify-between text-[10px] text-muted mt-1">
                 <span>1 chunk</span>
                 <span>Default: 5</span>
                 <span>20 chunks</span>
@@ -247,108 +237,94 @@ export default function SemanticSearchPage() {
 
           {/* Error Message */}
           {error && (
-            <div className="p-3 rounded-lg bg-red-950/40 border border-red-900/60 text-red-300 text-xs flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-500 text-xs flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {/* Submit Button */}
           <div className="flex justify-end pt-2">
-            <button
+            <Button
               type="submit"
+              variant="primary"
+              size="md"
+              icon={Search}
               disabled={loading || (!isAdmin && modules.length === 0)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition shadow-lg shadow-indigo-600/25 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              loading={loading}
             >
-              {loading ? (
-                <>
-                  <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Searching Atlas Vector Index...</span>
-                </>
-              ) : (
-                <>
-                  <Search className="h-4 w-4" />
-                  <span>Search Knowledge Base</span>
-                </>
-              )}
-            </button>
+              {loading ? 'Searching Atlas Vector Index...' : 'Search Knowledge Base'}
+            </Button>
           </div>
         </form>
-      </div>
+      </Card>
 
       {/* Retrieval Results Section */}
       {searchResponse && (
-        <div className="space-y-6 animate-fadeIn">
+        <div className="space-y-6 animate-slide-up">
           {/* Results Summary Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400">
+          <Card className="p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs text-muted shadow-sm">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-slate-200">
+              <span className="font-medium text-heading">
                 Found {searchResponse.count} relevant {searchResponse.count === 1 ? 'chunk' : 'chunks'}
               </span>
               <span>for query</span>
-              <span className="text-indigo-300 italic max-w-xs sm:max-w-md truncate">
+              <span className="text-indigo-500 italic max-w-xs sm:max-w-md truncate">
                 "{searchResponse.question}"
               </span>
             </div>
-            <div className="text-[11px] text-slate-500">
+            <div className="text-[11px] text-muted">
               Ranked strictly by cosine similarity score
             </div>
-          </div>
+          </Card>
 
           {/* No Results Message */}
           {searchResponse.results.length === 0 && (
-            <div className="text-center py-12 px-4 rounded-2xl bg-slate-900/40 border border-slate-800">
-              <Info className="h-8 w-8 text-slate-500 mx-auto mb-3" />
-              <h3 className="text-base font-semibold text-slate-300">No Matching Chunks Found</h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                No indexed chunks matched your search criteria. Ensure that documents have completed embeddings, or expand your search scope.
-              </p>
-            </div>
+            <EmptyState
+              icon={Info}
+              title="No Matching Chunks Found"
+              description="No indexed chunks matched your search criteria. Ensure that documents have completed embeddings, or expand your search scope."
+            />
           )}
 
           {/* Chunks List */}
           <div className="space-y-4">
             {searchResponse.results.map((result, idx) => (
-              <div
+              <Card
                 key={result.chunkId}
-                className="bg-slate-900/80 border border-slate-800/90 rounded-2xl p-5 hover:border-slate-700 transition space-y-3"
+                className="p-5 hover:border-indigo-500/40 transition space-y-3 shadow-sm"
               >
                 {/* Header: Score, Document, Module */}
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                   <div className="flex flex-wrap items-center gap-2">
-                    {/* Rank Badge */}
-                    <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono text-[11px] font-semibold">
+                    <span className="px-2 py-0.5 rounded-md card-base text-heading font-mono text-[11px] font-semibold border border-subtle">
                       #{idx + 1}
                     </span>
 
-                    {/* Module Code Badge */}
                     {result.moduleCode && (
-                      <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-medium text-[11px] border border-indigo-500/30">
+                      <Badge variant="indigo" size="xs">
                         {result.moduleCode}
-                      </span>
+                      </Badge>
                     )}
 
-                    {/* Document Title */}
-                    <span className="font-semibold text-slate-200 flex items-center gap-1">
-                      <FileText className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="font-semibold text-heading flex items-center gap-1">
+                      <FileText className="h-3.5 w-3.5 text-muted" />
                       {result.documentName}
                     </span>
 
-                    {/* Chunk Index */}
-                    <span className="text-slate-400 text-[11px]">
+                    <span className="text-muted text-[11px]">
                       (Chunk #{result.chunkIndex})
                     </span>
                   </div>
 
                   {/* Similarity Score */}
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-mono text-xs font-semibold">
-                    <span>Relevance:</span>
-                    <span>{typeof result.score === 'number' ? result.score.toFixed(4) : result.score}</span>
-                  </div>
+                  <Badge variant="emerald" size="xs">
+                    Relevance: {typeof result.score === 'number' ? result.score.toFixed(4) : result.score}
+                  </Badge>
                 </div>
 
                 {/* Metadata details */}
-                <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400 border-b border-slate-800/60 pb-2">
+                <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted border-b border-subtle pb-2">
                   {result.metadata?.pageStart && (
                     <span>
                       Pages: {result.metadata.pageStart}
@@ -365,21 +341,21 @@ export default function SemanticSearchPage() {
                 </div>
 
                 {/* Chunk Text Passage */}
-                <div className="bg-slate-950/70 rounded-xl p-4 border border-slate-800/50">
-                  <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-sans whitespace-pre-wrap">
+                <div className="card-base rounded-xl p-4 border border-subtle">
+                  <p className="text-xs sm:text-sm text-body leading-relaxed font-sans whitespace-pre-wrap">
                     {result.text}
                   </p>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
 
-          {/* Phase 7 Preview Note */}
-          <div className="p-4 rounded-xl bg-indigo-950/30 border border-indigo-800/40 text-xs text-indigo-300/80 flex items-start gap-2.5">
-            <Info className="h-4 w-4 shrink-0 text-indigo-400 mt-0.5" />
+          {/* Scope Note */}
+          <div className="p-4 rounded-xl card-base border border-indigo-500/30 text-xs text-body flex items-start gap-2.5 shadow-sm">
+            <Info className="h-4 w-4 shrink-0 text-indigo-500 mt-0.5" />
             <div>
-              <span className="font-semibold text-indigo-200">Phase 6 Strict Scope: </span>
-              These retrieved chunks represent the exact grounded context that will be injected into Gemini prompts during Phase 7 for RAG answer synthesis and source citations.
+              <span className="font-semibold text-heading">Grounded Retrieval Scope: </span>
+              These retrieved chunks represent the exact grounded context that is injected into Gemini prompts during Study Assistant and Exam Generation for accurate answer synthesis and citations.
             </div>
           </div>
         </div>

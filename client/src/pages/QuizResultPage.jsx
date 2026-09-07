@@ -16,6 +16,11 @@ import {
   BookOpen
 } from 'lucide-react';
 import { quizService } from '../services/quiz.service.js';
+import { PageHeader } from '../components/ui/PageHeader.jsx';
+import { Button } from '../components/ui/Button.jsx';
+import { Badge } from '../components/ui/Badge.jsx';
+import { Card } from '../components/ui/Card.jsx';
+import { SkeletonCard } from '../components/ui/Skeleton.jsx';
 
 export default function QuizResultPage() {
   const { attemptId } = useParams();
@@ -52,25 +57,29 @@ export default function QuizResultPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-20 text-center text-slate-500">
-        <Award className="h-10 w-10 animate-bounce mx-auto text-indigo-500 mb-3" />
-        <p className="text-sm">Calculating quiz results and performance analytics...</p>
+      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+        <SkeletonCard />
+        <SkeletonCard />
       </div>
     );
   }
 
   if (error || !attemptData) {
     return (
-      <div className="max-w-md mx-auto px-4 py-16 text-center">
-        <div className="p-4 rounded-xl bg-red-950/50 border border-red-800 text-red-300 text-sm mb-4">
-          {error || 'Could not load quiz attempt.'}
-        </div>
-        <Link
-          to="/quizzes"
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition inline-block"
-        >
-          Return to Quizzes
-        </Link>
+      <div className="max-w-md mx-auto px-4 py-16 text-center animate-fade-in">
+        <Card className="p-6 space-y-4">
+          <div className="h-12 w-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mx-auto">
+            <AlertTriangle className="h-6 w-6" />
+          </div>
+          <p className="text-rose-500 text-sm">{error || 'Could not load quiz attempt.'}</p>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate('/quizzes')}
+          >
+            Return to Quizzes
+          </Button>
+        </Card>
       </div>
     );
   }
@@ -80,61 +89,59 @@ export default function QuizResultPage() {
   const isPassing = attempt.percentage >= 50;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       {/* Page Header */}
-      <div className="mb-8 border-b border-slate-800 pb-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-2xl">🎉</span>
-            <h1 className="text-2xl font-bold tracking-tight text-white">Quiz Complete!</h1>
+      <PageHeader
+        badge="Performance Report"
+        badgeVariant={isHighScorer ? 'emerald' : isPassing ? 'indigo' : 'rose'}
+        title="Quiz Complete! 🎉"
+        subtitle={`${attempt.module?.moduleCode || 'Module'} • ${attempt.quiz?.title || 'Practice Quiz'}`}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              icon={RotateCcw}
+              onClick={() => navigate('/quizzes')}
+            >
+              Try Another Quiz
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={History}
+              onClick={() => navigate('/quiz-history')}
+            >
+              Quiz History
+            </Button>
           </div>
-          <p className="text-sm text-slate-400">
-            {attempt.module?.moduleCode} &bull; {attempt.quiz?.title || 'Practice Quiz'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/quizzes')}
-            className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Try Another Quiz
-          </button>
-          <button
-            onClick={() => navigate('/quiz-history')}
-            className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5"
-          >
-            <History className="h-3.5 w-3.5" />
-            Quiz History
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Primary Score Banner */}
-      <div
-        className={`rounded-2xl border p-6 md:p-8 mb-8 text-center transition ${
+      <Card
+        className={`p-6 md:p-8 text-center transition shadow-md ${
           isHighScorer
-            ? 'bg-emerald-950/30 border-emerald-800/60'
+            ? 'border-emerald-500/40 bg-emerald-500/5'
             : isPassing
-            ? 'bg-indigo-950/30 border-indigo-800/60'
-            : 'bg-rose-950/30 border-rose-800/60'
+            ? 'border-indigo-500/40 bg-indigo-500/5'
+            : 'border-rose-500/40 bg-rose-500/5'
         }`}
       >
-        <div className="inline-flex items-center justify-center p-3 rounded-full bg-slate-900 border border-slate-800 mb-3">
+        <div className="inline-flex items-center justify-center p-3 rounded-2xl card-base border border-subtle mb-3 shadow-inner">
           <Award
             className={`h-8 w-8 ${
-              isHighScorer ? 'text-emerald-400' : isPassing ? 'text-indigo-400' : 'text-rose-400'
+              isHighScorer ? 'text-emerald-500' : isPassing ? 'text-indigo-500' : 'text-rose-500'
             }`}
           />
         </div>
 
-        <div className="text-4xl font-extrabold text-white tracking-tight mb-1">
+        <div className="text-4xl sm:text-5xl font-extrabold text-heading tracking-tight mb-1">
           {attempt.score} / {attempt.totalQuestions}
         </div>
         <div
           className={`text-lg font-bold mb-6 ${
-            isHighScorer ? 'text-emerald-400' : isPassing ? 'text-indigo-400' : 'text-rose-400'
+            isHighScorer ? 'text-emerald-500' : isPassing ? 'text-indigo-500' : 'text-rose-500'
           }`}
         >
           {attempt.percentage}% Overall Accuracy
@@ -142,43 +149,43 @@ export default function QuizResultPage() {
 
         {/* Breakdown Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto">
-          <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800">
-            <span className="text-xs text-slate-400 block mb-1">Correct</span>
-            <span className="text-base font-bold text-emerald-400 flex items-center justify-center gap-1">
+          <div className="p-3 card-base rounded-xl border border-subtle shadow-sm">
+            <span className="text-xs text-muted block mb-1">Correct</span>
+            <span className="text-base font-bold text-emerald-500 flex items-center justify-center gap-1">
               <CheckCircle2 className="h-4 w-4" />
               {attempt.correctAnswers}
             </span>
           </div>
 
-          <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800">
-            <span className="text-xs text-slate-400 block mb-1">Incorrect</span>
-            <span className="text-base font-bold text-rose-400 flex items-center justify-center gap-1">
+          <div className="p-3 card-base rounded-xl border border-subtle shadow-sm">
+            <span className="text-xs text-muted block mb-1">Incorrect</span>
+            <span className="text-base font-bold text-rose-500 flex items-center justify-center gap-1">
               <XCircle className="h-4 w-4" />
               {attempt.incorrectAnswers}
             </span>
           </div>
 
-          <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800">
-            <span className="text-xs text-slate-400 block mb-1">Unanswered</span>
-            <span className="text-base font-bold text-slate-300">
+          <div className="p-3 card-base rounded-xl border border-subtle shadow-sm">
+            <span className="text-xs text-muted block mb-1">Unanswered</span>
+            <span className="text-base font-bold text-heading">
               {Math.max(0, attempt.totalQuestions - attempt.answeredQuestions)}
             </span>
           </div>
 
-          <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800">
-            <span className="text-xs text-slate-400 block mb-1">Time Elapsed</span>
-            <span className="text-base font-bold text-slate-300 font-mono flex items-center justify-center gap-1">
-              <Clock className="h-3.5 w-3.5 text-indigo-400" />
+          <div className="p-3 card-base rounded-xl border border-subtle shadow-sm">
+            <span className="text-xs text-muted block mb-1">Time Elapsed</span>
+            <span className="text-base font-bold text-heading font-mono flex items-center justify-center gap-1">
+              <Clock className="h-3.5 w-3.5 text-indigo-500" />
               {formatTimer(attempt.timeSpentSeconds)}
             </span>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Detailed Question Review List */}
       <div className="space-y-6">
-        <h2 className="text-base font-semibold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-          <BookOpen className="h-4 w-4 text-indigo-400" />
+        <h2 className="text-base font-semibold text-heading flex items-center gap-2 border-b border-subtle pb-3">
+          <BookOpen className="h-4 w-4 text-indigo-500" />
           Detailed Question Review ({results.length})
         </h2>
 
@@ -187,67 +194,61 @@ export default function QuizResultPage() {
           const wasAnswered = Boolean(item.selectedAnswer && item.selectedAnswer.trim().length > 0);
 
           return (
-            <div
+            <Card
               key={item.questionId || idx}
-              className={`rounded-2xl border p-6 transition shadow-sm ${
+              className={`p-6 transition shadow-sm ${
                 isCorrect
-                  ? 'bg-slate-900/70 border-emerald-900/50'
-                  : 'bg-slate-900/70 border-rose-900/50'
+                  ? 'border-emerald-500/30'
+                  : 'border-rose-500/30'
               }`}
             >
               {/* Question Header */}
               <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-bold text-slate-300 px-2.5 py-1 bg-slate-800 rounded-lg">
+                  <span className="text-xs font-bold text-heading px-2.5 py-1 card-base border border-subtle rounded-lg">
                     Question {idx + 1}
                   </span>
-                  <span
-                    className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
-                      isCorrect
-                        ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60'
-                        : 'bg-rose-950/60 text-rose-300 border-rose-800/60'
-                    }`}
-                  >
+                  <Badge variant={isCorrect ? 'emerald' : 'rose'} size="sm">
                     {isCorrect ? (
                       <>
-                        <Check className="h-3.5 w-3.5" /> Correct
+                        <Check className="h-3 w-3 mr-1 inline" /> Correct
                       </>
                     ) : (
                       <>
-                        <X className="h-3.5 w-3.5" /> Incorrect
+                        <X className="h-3 w-3 mr-1 inline" /> Incorrect
                       </>
                     )}
-                  </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                  </Badge>
+                  <Badge variant="default" size="sm">
                     Level {item.difficulty}
-                  </span>
+                  </Badge>
                   {item.topic && (
-                    <span className="text-xs text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                    <Badge variant="purple" size="sm">
                       {item.topic}
-                    </span>
+                    </Badge>
                   )}
                 </div>
               </div>
 
               {/* Question Prompt */}
-              <p className="text-slate-100 font-medium text-base mb-5 leading-relaxed">
+              <p className="text-heading font-medium text-base mb-5 leading-relaxed">
                 {item.questionText}
               </p>
 
               {/* Answers Comparison Box */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 p-4 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 p-4 rounded-xl card-base border border-subtle shadow-inner">
                 {/* User selection */}
                 <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted block mb-1">
                     Your Answer:
                   </span>
                   <p
                     className={`text-sm font-medium ${
                       !wasAnswered
-                        ? 'text-slate-500 italic'
+                        ? 'text-muted italic'
                         : isCorrect
-                        ? 'text-emerald-400'
-                        : 'text-rose-400 line-through'
+                        ? 'text-emerald-500'
+                        : 'text-rose-500 line-through'
                     }`}
                   >
                     {wasAnswered ? item.selectedAnswer : 'Unanswered (Skipped)'}
@@ -256,10 +257,10 @@ export default function QuizResultPage() {
 
                 {/* Expected solution */}
                 <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400 block mb-1">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-emerald-500 block mb-1">
                     Correct Answer:
                   </span>
-                  <p className="text-sm font-semibold text-emerald-300">
+                  <p className="text-sm font-semibold text-emerald-500">
                     {item.correctAnswer}
                   </p>
                 </div>
@@ -268,10 +269,10 @@ export default function QuizResultPage() {
               {/* Grounded Explanation */}
               {item.explanation && (
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+                  <span className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1">
                     Explanation:
                   </span>
-                  <p className="text-xs text-slate-300 leading-relaxed">
+                  <p className="text-xs text-body leading-relaxed">
                     {item.explanation}
                   </p>
                 </div>
@@ -281,8 +282,8 @@ export default function QuizResultPage() {
               {(item.examClue || item.commonTrap) && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                   {item.examClue && (
-                    <div className="p-3 bg-amber-950/20 rounded-lg border border-amber-900/30 text-xs text-amber-200">
-                      <span className="font-semibold text-amber-400 flex items-center gap-1 mb-1">
+                    <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 text-xs text-amber-500">
+                      <span className="font-semibold flex items-center gap-1 mb-1">
                         ⭐ Exam Clue
                       </span>
                       <p>{item.examClue}</p>
@@ -290,8 +291,8 @@ export default function QuizResultPage() {
                   )}
 
                   {item.commonTrap && (
-                    <div className="p-3 bg-rose-950/20 rounded-lg border border-rose-900/30 text-xs text-rose-200">
-                      <span className="font-semibold text-rose-400 flex items-center gap-1 mb-1">
+                    <div className="p-3 bg-rose-500/10 rounded-xl border border-rose-500/20 text-xs text-rose-500">
+                      <span className="font-semibold flex items-center gap-1 mb-1">
                         ⚠️ Common Exam Trap
                       </span>
                       <p>{item.commonTrap}</p>
@@ -302,12 +303,12 @@ export default function QuizResultPage() {
 
               {/* Source Attribution */}
               {Array.isArray(item.sourceChunks) && item.sourceChunks.length > 0 && (
-                <div className="pt-3 border-t border-slate-800/80">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <FileText className="h-3.5 w-3.5 text-indigo-400" />
+                <div className="pt-3 border-t border-subtle">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                    <FileText className="h-3.5 w-3.5 text-indigo-500" />
                     <span>Source: {item.sourceChunks[0]?.documentName || 'Lecture Material'}</span>
                     <span>&bull;</span>
-                    <span className="text-slate-400">Chunk #{item.sourceChunks[0]?.chunkIndex}</span>
+                    <span className="text-heading font-mono">Chunk #{item.sourceChunks[0]?.chunkIndex}</span>
                     {item.sourceChunks[0]?.pageStart && (
                       <>
                         <span>&bull;</span>
@@ -317,7 +318,7 @@ export default function QuizResultPage() {
                   </div>
                 </div>
               )}
-            </div>
+            </Card>
           );
         })}
       </div>

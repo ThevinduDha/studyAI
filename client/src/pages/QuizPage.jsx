@@ -22,6 +22,13 @@ import { moduleService } from '../services/module.service.js';
 import { documentService } from '../services/document.service.js';
 import { questionService } from '../services/question.service.js';
 import { quizService } from '../services/quiz.service.js';
+import { PageHeader } from '../components/ui/PageHeader.jsx';
+import { Button } from '../components/ui/Button.jsx';
+import { Badge } from '../components/ui/Badge.jsx';
+import { Card } from '../components/ui/Card.jsx';
+import { Select } from '../components/ui/Select.jsx';
+import { Input } from '../components/ui/Input.jsx';
+import { Modal } from '../components/ui/Modal.jsx';
 
 export default function QuizPage() {
   const { user, isAdmin } = useAuth();
@@ -46,7 +53,7 @@ export default function QuizPage() {
   const [currentAttempt, setCurrentAttempt] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState({}); // { [questionId]: answerString }
+  const [selectedAnswers, setSelectedAnswers] = useState({});
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
 
@@ -164,7 +171,6 @@ export default function QuizPage() {
     setError('');
 
     try {
-      // 1. Create quiz definition
       const createRes = await quizService.createQuiz({
         moduleId: selectedModule,
         documentId: selectedDocument || undefined,
@@ -175,8 +181,6 @@ export default function QuizPage() {
       });
 
       const newQuiz = createRes.quiz;
-
-      // 2. Start attempt
       const startRes = await quizService.startQuiz(newQuiz._id);
       setActiveQuiz(newQuiz);
       setCurrentAttempt(startRes.attempt);
@@ -214,8 +218,7 @@ export default function QuizPage() {
         selectedAnswer: ans
       }));
 
-      const result = await quizService.submitQuiz(currentAttempt._id, answersPayload);
-      // Navigate to detailed result review page
+      await quizService.submitQuiz(currentAttempt._id, answersPayload);
       navigate(`/quiz-results/${currentAttempt._id}`);
     } catch (err) {
       console.error('Submit failed:', err);
@@ -249,41 +252,32 @@ export default function QuizPage() {
   const answeredCount = Object.keys(selectedAnswers).filter((k) => selectedAnswers[k]?.trim().length > 0).length;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-5">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="p-1.5 rounded-md bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
-              <Award className="h-5 w-5" />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">AI Quiz System</h1>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-950 text-indigo-400 border border-indigo-800">
-              Phase 10
-            </span>
-          </div>
-          <p className="text-sm text-slate-400">
-            Interactive, timed practice tests with server-evaluated grading and exam preparation analytics.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
+      <PageHeader
+        badge="Phase 10"
+        badgeVariant="indigo"
+        title="AI Quiz System"
+        icon={Award}
+        subtitle="Interactive, timed practice tests with server-evaluated grading and exam preparation analytics."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            icon={History}
             onClick={() => navigate('/quiz-history')}
-            className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition flex items-center gap-1.5"
           >
-            <History className="h-3.5 w-3.5 text-indigo-400" />
             My Quiz History
-          </button>
-        </div>
-      </div>
+          </Button>
+        }
+      />
 
       {/* Error Alert */}
       {error && (
-        <div className="mb-6 p-4 rounded-xl bg-red-950/50 border border-red-800/80 text-red-200 text-sm flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-500 text-sm flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
           <div className="flex-1">{error}</div>
-          <button onClick={() => setError('')} className="text-red-400 hover:text-red-200">
+          <button onClick={() => setError('')} className="text-rose-500 hover:opacity-80">
             &times;
           </button>
         </div>
@@ -293,9 +287,9 @@ export default function QuizPage() {
       {/* MODE 1: QUIZ CONFIGURATION */}
       {/* ------------------------------------------------------------ */}
       {mode === 'configure' && (
-        <div className="bg-slate-900/60 rounded-2xl border border-slate-800 p-6 md:p-8 shadow-sm">
-          <h2 className="text-base font-semibold text-white flex items-center gap-2 mb-6">
-            <Sparkles className="h-4 w-4 text-indigo-400" />
+        <Card className="p-6 md:p-8 shadow-sm space-y-6">
+          <h2 className="text-base font-semibold text-heading flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-indigo-500" />
             Configure Your Practice Quiz
           </h2>
 
@@ -303,15 +297,15 @@ export default function QuizPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Module Selector */}
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-2">Course Module *</label>
                 {loadingModules ? (
-                  <div className="h-10 bg-slate-800/50 animate-pulse rounded-lg border border-slate-700/50" />
+                  <div className="h-10 bg-subtle animate-pulse rounded-xl" />
                 ) : (
-                  <select
+                  <Select
+                    id="quiz-module"
+                    label="Course Module *"
                     value={selectedModule}
                     onChange={(e) => setSelectedModule(e.target.value)}
                     required
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition"
                   >
                     <option value="">-- Select Module --</option>
                     {modules.map((m) => (
@@ -319,21 +313,21 @@ export default function QuizPage() {
                         {m.moduleCode} — {m.moduleName}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 )}
               </div>
 
               {/* Lecture Document Selector */}
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-2">Lecture Document (Optional)</label>
                 {loadingDocs ? (
-                  <div className="h-10 bg-slate-800/50 animate-pulse rounded-lg border border-slate-700/50" />
+                  <div className="h-10 bg-subtle animate-pulse rounded-xl" />
                 ) : (
-                  <select
+                  <Select
+                    id="quiz-doc"
+                    label="Lecture Document (Optional)"
                     value={selectedDocument}
                     onChange={(e) => setSelectedDocument(e.target.value)}
                     disabled={!selectedModule || documents.length === 0}
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-3.5 py-2.5 text-sm text-slate-200 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition"
                   >
                     <option value="">All Lecture Documents in Module</option>
                     {documents.map((d) => (
@@ -341,73 +335,70 @@ export default function QuizPage() {
                         {d.originalName}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 )}
               </div>
 
               {/* Question Type */}
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-2">Question Type</label>
-                <select
+                <Select
+                  id="quiz-type"
+                  label="Question Type"
                   value={questionType}
                   onChange={(e) => setQuestionType(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition"
                 >
                   <option value="ALL">All Types (Mixed Quiz)</option>
                   <option value="MCQ">Multiple Choice (MCQ)</option>
                   <option value="TRUE_FALSE">True / False</option>
                   <option value="SHORT_ANSWER">Short Answer</option>
                   <option value="SCENARIO">Scenario-Based</option>
-                </select>
+                </Select>
               </div>
 
               {/* Difficulty */}
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-2">Difficulty Level</label>
-                <select
+                <Select
+                  id="quiz-difficulty"
+                  label="Difficulty Level"
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition"
                 >
                   <option value="ALL">All Levels (Adaptive)</option>
                   <option value="2">Level 2 — Basic Understanding</option>
                   <option value="3">Level 3 — Moderate / Application</option>
                   <option value="4">Level 4 — Advanced / Scenario</option>
-                </select>
+                </Select>
               </div>
 
               {/* Number of Questions */}
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-2">Number of Questions</label>
-                <input
+                <Input
+                  id="quiz-count"
+                  label="Number of Questions"
                   type="number"
                   min="1"
                   max="50"
                   value={count}
                   onChange={(e) => setCount(Math.max(1, Math.min(50, parseInt(e.target.value, 10) || 1)))}
-                  className="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition"
                 />
               </div>
 
               {/* Available Questions Indicator */}
-              <div className="flex flex-col justify-center">
-                <span className="text-xs font-medium text-slate-400 mb-2">Question Bank Availability</span>
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 text-xs flex items-center justify-between">
-                  <span className="text-slate-400">Available matching items:</span>
+              <div className="flex flex-col justify-end">
+                <span className="text-xs font-medium text-muted mb-1.5">Question Bank Availability</span>
+                <div className="p-3 card-base rounded-xl border border-subtle text-xs flex items-center justify-between shadow-sm">
+                  <span className="text-muted">Available items:</span>
                   {checkingBank ? (
-                    <RotateCw className="h-4 w-4 animate-spin text-indigo-400" />
+                    <RotateCw className="h-4 w-4 animate-spin text-indigo-500" />
                   ) : availableQuestionsCount !== null ? (
-                    <span
-                      className={`font-semibold px-2 py-0.5 rounded ${
-                        availableQuestionsCount >= count
-                          ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60'
-                          : 'bg-amber-950/60 text-amber-300 border border-amber-800/60'
-                      }`}
+                    <Badge
+                      variant={availableQuestionsCount >= count ? 'emerald' : 'amber'}
+                      size="sm"
                     >
                       {availableQuestionsCount} {availableQuestionsCount === 1 ? 'question' : 'questions'}
-                    </span>
+                    </Badge>
                   ) : (
-                    <span className="text-slate-600">Select module to check</span>
+                    <span className="text-muted">Select module to check</span>
                   )}
                 </div>
               </div>
@@ -415,8 +406,8 @@ export default function QuizPage() {
 
             {/* Warning if insufficient */}
             {availableQuestionsCount !== null && availableQuestionsCount < count && (
-              <div className="p-3 bg-amber-950/30 rounded-xl border border-amber-900/40 text-xs text-amber-300 flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 text-xs text-amber-500 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                 <div>
                   Only <strong>{availableQuestionsCount}</strong> questions are currently generated in the Question Bank for these filters. Please select up to {availableQuestionsCount} questions or visit the <strong>Exam Questions</strong> generator to create more items.
                 </div>
@@ -424,31 +415,24 @@ export default function QuizPage() {
             )}
 
             {/* Submit Action */}
-            <div className="pt-4 border-t border-slate-800 flex items-center justify-end">
-              <button
+            <div className="pt-4 border-t border-subtle flex items-center justify-end">
+              <Button
                 type="submit"
+                variant="primary"
+                size="lg"
+                icon={Award}
                 disabled={
                   starting ||
                   !selectedModule ||
                   (availableQuestionsCount !== null && availableQuestionsCount < count)
                 }
-                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-md shadow-indigo-600/20 transition flex items-center gap-2"
+                loading={starting}
               >
-                {starting ? (
-                  <>
-                    <RotateCw className="h-4 w-4 animate-spin" />
-                    Preparing Quiz...
-                  </>
-                ) : (
-                  <>
-                    <Award className="h-4 w-4" />
-                    Start Practice Quiz
-                  </>
-                )}
-              </button>
+                {starting ? 'Preparing Quiz...' : 'Start Practice Quiz'}
+              </Button>
             </div>
           </form>
-        </div>
+        </Card>
       )}
 
       {/* ------------------------------------------------------------ */}
@@ -457,59 +441,61 @@ export default function QuizPage() {
       {mode === 'active' && questions.length > 0 && currentQ && (
         <div className="space-y-6">
           {/* Top Bar: Progress & Timer */}
-          <div className="bg-slate-900/80 rounded-2xl border border-slate-800 p-4 flex flex-wrap items-center justify-between gap-4">
+          <Card className="p-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-indigo-400 bg-indigo-950/80 px-2.5 py-1 rounded-md border border-indigo-800/60">
+              <Badge variant="indigo" size="md">
                 Question {currentIndex + 1} of {questions.length}
-              </span>
-              <span className="text-xs text-slate-400">
-                Answered: <strong className="text-slate-200">{answeredCount}</strong> / {questions.length}
+              </Badge>
+              <span className="text-xs text-muted">
+                Answered: <strong className="text-heading">{answeredCount}</strong> / {questions.length}
               </span>
             </div>
 
             <div className="flex items-center gap-4">
               {/* Elapsed Timer */}
-              <div className="flex items-center gap-1.5 text-slate-300 font-mono text-xs bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
-                <Clock className="h-3.5 w-3.5 text-indigo-400" />
+              <div className="flex items-center gap-1.5 text-body font-mono text-xs card-base px-3 py-1.5 rounded-xl border border-subtle shadow-sm">
+                <Clock className="h-3.5 w-3.5 text-indigo-500" />
                 <span>{formatTimer(elapsedSeconds)}</span>
               </div>
 
               {/* Abandon button */}
-              <button
+              <Button
+                variant="ghost"
+                size="xs"
                 onClick={handleAbandonQuiz}
-                className="text-xs text-slate-500 hover:text-red-400 transition"
+                className="!text-rose-500 hover:!bg-rose-500/10"
               >
                 Abandon Quiz
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
 
           {/* Progress Bar */}
-          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+          <div className="w-full bg-subtle h-2 rounded-full overflow-hidden">
             <div
-              className="bg-indigo-500 h-full transition-all duration-300"
+              className="bg-indigo-600 h-full transition-all duration-300 rounded-full"
               style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
             />
           </div>
 
           {/* Question Card */}
-          <div className="bg-slate-900/60 rounded-2xl border border-slate-800 p-6 md:p-8">
+          <Card className="p-6 md:p-8">
             <div className="flex flex-wrap items-center gap-2 mb-4">
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+              <Badge variant="default" size="sm">
                 {currentQ.questionType}
-              </span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-950/60 text-indigo-300 border border-indigo-800/60">
+              </Badge>
+              <Badge variant="indigo" size="sm">
                 Difficulty Level {currentQ.difficulty}
-              </span>
+              </Badge>
               {currentQ.topic && (
-                <span className="text-xs text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                <Badge variant="purple" size="sm">
                   Topic: {currentQ.topic}
-                </span>
+                </Badge>
               )}
             </div>
 
             {/* Question Text */}
-            <h3 className="text-lg font-medium text-slate-100 mb-6 leading-relaxed">
+            <h3 className="text-lg font-medium text-heading mb-6 leading-relaxed">
               {currentQ.questionText}
             </h3>
 
@@ -525,17 +511,17 @@ export default function QuizPage() {
                       key={optIdx}
                       type="button"
                       onClick={() => handleSelectOption(currentQ.id, opt)}
-                      className={`w-full text-left p-4 rounded-xl border text-sm transition flex items-start gap-3 ${
+                      className={`w-full text-left p-4 rounded-xl border text-sm transition flex items-start gap-3 cursor-pointer ${
                         isSelected
-                          ? 'bg-indigo-600/20 border-indigo-500 text-white'
-                          : 'bg-slate-950/60 hover:bg-slate-950 border-slate-800 text-slate-300'
+                          ? 'bg-indigo-500/15 border-indigo-500 text-heading shadow-sm ring-1 ring-indigo-500'
+                          : 'card-base hover:border-subtle border-subtle text-body'
                       }`}
                     >
                       <span
                         className={`h-6 w-6 rounded-md flex items-center justify-center text-xs font-semibold shrink-0 ${
                           isSelected
                             ? 'bg-indigo-600 text-white'
-                            : 'bg-slate-800 text-slate-400'
+                            : 'bg-subtle text-muted'
                         }`}
                       >
                         {currentQ.questionType === 'TRUE_FALSE' ? (opt === 'True' ? 'T' : 'F') : letter}
@@ -548,53 +534,56 @@ export default function QuizPage() {
             ) : (
               /* Short Answer input */
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-2">Your Answer:</label>
+                <label className="block text-xs font-medium text-muted mb-2">Your Answer:</label>
                 <textarea
                   rows={3}
                   value={selectedAnswers[currentQ.id] || ''}
                   onChange={(e) => handleSelectOption(currentQ.id, e.target.value)}
                   placeholder="Type your concise model answer here..."
-                  className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  className="w-full input-base rounded-xl p-3 text-sm resize-none"
                 />
               </div>
             )}
 
             {/* Navigation Footer */}
-            <div className="mt-8 pt-6 border-t border-slate-800 flex items-center justify-between">
-              <button
+            <div className="mt-8 pt-6 border-t border-subtle flex items-center justify-between">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={ChevronLeft}
                 onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
                 disabled={currentIndex === 0}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium text-slate-300 transition flex items-center gap-1.5"
               >
-                <ChevronLeft className="h-4 w-4" />
                 Previous
-              </button>
+              </Button>
 
               <div className="flex items-center gap-2">
                 {currentIndex < questions.length - 1 ? (
-                  <button
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
-                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition flex items-center gap-1.5"
                   >
                     Next
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
+                    <ChevronRight className="h-4 w-4 ml-1 inline" />
+                  </Button>
                 ) : (
-                  <button
+                  <Button
+                    variant="success"
+                    size="sm"
+                    icon={Send}
                     onClick={() => setShowSubmitModal(true)}
-                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5"
                   >
-                    <Send className="h-4 w-4" />
                     Submit Quiz
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Question Palette Indicator */}
-          <div className="bg-slate-900/40 rounded-xl border border-slate-800/80 p-4">
-            <span className="text-xs font-medium text-slate-400 block mb-3">Jump to Question:</span>
+          <Card className="p-4">
+            <span className="text-xs font-medium text-muted block mb-3">Jump to Question:</span>
             <div className="flex flex-wrap gap-2">
               {questions.map((q, idx) => {
                 const isCurrent = idx === currentIndex;
@@ -604,12 +593,12 @@ export default function QuizPage() {
                   <button
                     key={q.id || idx}
                     onClick={() => setCurrentIndex(idx)}
-                    className={`h-8 w-8 rounded-lg text-xs font-semibold transition ${
+                    className={`h-8 w-8 rounded-lg text-xs font-semibold transition cursor-pointer ${
                       isCurrent
                         ? 'ring-2 ring-indigo-500 text-white bg-indigo-600'
                         : isAnswered
-                        ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30'
+                        : 'card-base border border-subtle text-muted hover:text-heading'
                     }`}
                   >
                     {idx + 1}
@@ -617,65 +606,50 @@ export default function QuizPage() {
                 );
               })}
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* ------------------------------------------------------------ */}
       {/* SUBMISSION CONFIRMATION MODAL */}
       {/* ------------------------------------------------------------ */}
-      {showSubmitModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-semibold text-white flex items-center gap-2">
-                <Send className="h-4 w-4 text-emerald-400" />
-                Submit Quiz for Grading
-              </h3>
-              <button
-                onClick={() => setShowSubmitModal(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+      <Modal
+        isOpen={showSubmitModal}
+        onClose={() => setShowSubmitModal(false)}
+        title="Submit Quiz for Grading"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-body leading-relaxed">
+            You have answered <strong className="text-heading">{answeredCount}</strong> out of{' '}
+            <strong className="text-heading">{questions.length}</strong> questions.
+            {answeredCount < questions.length && (
+              <span className="block mt-2 text-amber-500 font-medium">
+                ⚠️ You still have {questions.length - answeredCount} unanswered question(s). Unanswered questions will receive 0 points.
+              </span>
+            )}
+          </p>
 
-            <p className="text-xs text-slate-300">
-              You have answered <strong className="text-white">{answeredCount}</strong> out of{' '}
-              <strong className="text-white">{questions.length}</strong> questions.
-              {answeredCount < questions.length && (
-                <span className="block mt-2 text-amber-400">
-                  ⚠️ You still have {questions.length - answeredCount} unanswered question(s). Unanswered questions will receive 0 points.
-                </span>
-              )}
-            </p>
+          <div className="pt-4 border-t border-subtle flex items-center justify-end gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSubmitModal(false)}
+            >
+              Continue Reviewing
+            </Button>
 
-            <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setShowSubmitModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition"
-              >
-                Continue Reviewing
-              </button>
-
-              <button
-                onClick={handleSubmitQuiz}
-                disabled={submitting}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold shadow-md shadow-emerald-600/20 transition flex items-center gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <RotateCw className="h-3.5 w-3.5 animate-spin" />
-                    Scoring...
-                  </>
-                ) : (
-                  'Confirm & Submit'
-                )}
-              </button>
-            </div>
+            <Button
+              variant="success"
+              size="sm"
+              icon={RotateCw}
+              onClick={handleSubmitQuiz}
+              loading={submitting}
+            >
+              {submitting ? 'Scoring...' : 'Confirm & Submit'}
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }
