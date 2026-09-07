@@ -267,9 +267,70 @@ This document details the planned REST API routes, HTTP verbs, payload structure
     - `404 Not Found`: Specified `moduleId` or `documentId` does not exist.
     - `503 Service Unavailable`: `GEMINI_API_KEY` not configured.
 
+### 2.6 Grounded RAG Question Answering (`/api/rag` — Phase 7 Active)
+- **`POST /api/rag/ask`**
+  - **Auth**: `Bearer <token>` (Student: enrolled modules only; Admin: global or scoped)
+  - **Description**: Submits an academic question to the grounded StudyAI RAG pipeline. Retrievable course chunks from MongoDB Atlas Vector Search are injected as reference context into Google Gemini (`gemini-2.0-flash`). Gemini answers strictly from the context, and verified application citations are returned.
+  - **Request Body**:
+    ```json
+    {
+      "question": "What is state machine replication?",
+      "moduleId": "67ce123...",
+      "documentId": "67ce456...",
+      "topK": 5
+    }
+    ```
+  - **Response `200 OK`**:
+    ```json
+    {
+      "success": true,
+      "data": {
+        "question": "What is state machine replication?",
+        "answer": "According to the provided lecture notes, state machine replication is a technique where multiple nodes maintain identical states by executing a deterministic sequence of commands...",
+        "sources": [
+          {
+            "documentId": "67ce456...",
+            "documentName": "lecture_consensus.pdf",
+            "moduleId": "67ce123...",
+            "moduleCode": "CS401",
+            "chunkIndex": 0,
+            "pageStart": 2,
+            "pageEnd": 3,
+            "sectionHeading": "Consensus Basics",
+            "score": 0.8842
+          }
+        ],
+        "retrieval": {
+          "count": 1
+        }
+      }
+    }
+    ```
+  - **Zero-Context / Knowledge-Gap Response `200 OK`**:
+    ```json
+    {
+      "success": true,
+      "data": {
+        "question": "What is the capital of Mars?",
+        "answer": "I couldn't find enough information about this in the provided study materials.",
+        "sources": [],
+        "retrieval": {
+          "count": 0
+        }
+      }
+    }
+    ```
+  - **Error Responses**:
+    - `400 Bad Request`: Missing question, whitespace question, question > 2000 chars, or invalid `topK`.
+    - `401 Unauthorized`: Missing or invalid JWT session.
+    - `403 Forbidden`: Student attempting to query a non-enrolled module or document.
+    - `502 Bad Gateway`: AI generation failure (sanitized error message).
+    - `503 Service Unavailable`: `GEMINI_API_KEY` unconfigured.
+
 ---
 
-## 3. Planned Future Endpoints (Phase 7+)
+## 3. Planned Future Endpoints (Phase 8+)
+
 
 
 ### 3.5 AI & RAG (`/api/ai`)

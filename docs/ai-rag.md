@@ -26,15 +26,19 @@ Extracted Text ──► Text Normalization ──► Hierarchical Semantic Chun
 PHASE 5 (Complete):
 DocumentChunk ──► Gemini Embeddings (@google/genai, gemini-embedding-2, 768 dims) ──► Atlas Vector Search Index
 
-PHASE 6 (Current Completed):
+PHASE 6 (Complete):
 User Question ──► Query Embedding (RETRIEVAL_QUERY) ──► Atlas Vector Search ($vectorSearch) ──► Grounded Retrieval
 
-PHASE 7+ (Next Phases):
-Retrieved Chunks ──► Grounded Prompt Construction ──► Gemini Generative LLM Synthesis
+PHASE 7 (Current Completed):
+Retrieved Chunks ──► Context Construction ──► Grounded Prompt ──► Gemini 2.0 Flash ──► Grounded Answer + Citations
+
+PHASE 8+ (Future Phases):
+AI Tutor Modes, Quiz Generation, Flashcards, Podcasts
 ```
 
 > [!IMPORTANT]
-> **Phase 6 Boundary**: Phase 6 implements semantic retrieval and vector similarity search against course chunks in MongoDB Atlas Vector Search. Absolutely NO generative LLM synthesis, chat completions, RAG prompt construction, or chatbot responses are implemented in Phase 6.
+> **Phase 7 Grounding Standard**: StudyAI answers are strictly derived from the student's authorized course material chunks. General model knowledge is explicitly suppressed. When the provided context lacks sufficient information, the model states *"I couldn't find enough information about this in the provided study materials."* Citations are generated authoritatively by the application, never hallucinated by the model.
+
 
 
 ---
@@ -166,9 +170,25 @@ Retrieved Chunks ──► Grounded Prompt Construction ──► Gemini Generat
 - **Response Privacy**:
   - Stored chunk embeddings and query vector arrays are **never** returned across HTTP.
   - Returns grounded chunk text, relevance score, chunk index, document title, module code, and metadata.
-- **Strict Boundary**: Phase 6 ends immediately upon returning retrieved chunks. Absolutely NO answer generation or RAG prompt synthesis is performed.
+- **Strict Boundary**: Phase 6 focused strictly on retrieval.
+
+### 3.7 Grounded Generation & Citation Pipeline (`generation.service.js`, `rag.service.js` — Phase 7 Active)
+- **Generative Model**: Google Gemini (`gemini-2.0-flash` configured via `GEMINI_GENERATION_MODEL`).
+- **Generation Parameters**: Conservative settings (`temperature: 0.2`, `maxOutputTokens: 2048`).
+- **Endpoint**: `POST /api/rag/ask` (Protected via JWT authentication).
+- **Workflow**:
+  1. **User Query**: Authenticated student or admin submits `{ question, moduleId, documentId, topK }`.
+  2. **Retrieval Hand-off**: The Phase 6 semantic retrieval service executes an authorized `$vectorSearch` query.
+  3. **Zero-Result Short-Circuit**: If 0 chunks are found, the system immediately returns:  
+     *"I couldn't find enough information about this in the provided study materials."* without calling Gemini.
+  4. **Context Construction**: Formats qualified chunks into labeled blocks (`[SOURCE 1]`, `[SOURCE 2]`) with document titles, module codes, page ranges, and section headings. Clamped to `RAG_MAX_CONTEXT_CHARS` (default: 12,000 chars).
+  5. **Prompt Injection Defense**: The system prompt explicitly instructs Gemini that text inside `CONTEXT` is untrusted reference data, not system instructions, neutralizing malicious injection attempts.
+  6. **Grounded Answer Generation**: Gemini answers strictly from the context. Unsupported claims and hallucinated facts are strictly forbidden.
+  7. **Authoritative Citations**: The application builds verified citations from retrieved chunk metadata (`documentId`, `documentName`, `moduleCode`, `chunkIndex`, `pageStart`, `pageEnd`, `sectionHeading`).
+- **Response Privacy**: Raw embeddings, query vectors, API keys, and internal tracebacks are strictly excluded.
 
 ---
+
 
 
 ## 4. Grounded Prompt Engineering & Citation Strategy

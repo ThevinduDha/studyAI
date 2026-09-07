@@ -7,12 +7,13 @@ import RegisterPage from './pages/RegisterPage.jsx';
 import ModulesPage from './pages/ModulesPage.jsx';
 import AdminModulesPage from './pages/AdminModulesPage.jsx';
 import SemanticSearchPage from './pages/SemanticSearchPage.jsx';
+import StudyAssistantPage from './pages/StudyAssistantPage.jsx';
 import Phase1OverviewPage from './pages/Phase1OverviewPage.jsx';
 
 function RootRedirect() {
   const { isAuthenticated, loading } = useAuth();
   if (loading) return null;
-  return <Navigate to={isAuthenticated ? "/modules" : "/login"} replace />;
+  return <Navigate to={isAuthenticated ? "/assistant" : "/login"} replace />;
 }
 
 export default function App() {
@@ -31,6 +32,15 @@ export default function App() {
               <Route path="/register" element={<RegisterPage />} />
 
               {/* Protected Student / Shared Routes */}
+              <Route
+                path="/assistant"
+                element={
+                  <ProtectedRoute>
+                    <StudyAssistantPage />
+                  </ProtectedRoute>
+                }
+              />
+
               <Route
                 path="/modules"
                 element={
@@ -51,6 +61,7 @@ export default function App() {
               />
 
 
+
               {/* Protected Admin Only Routes */}
               <Route
                 path="/admin/modules"
@@ -69,7 +80,7 @@ export default function App() {
             </Routes>
           </main>
           <footer className="border-t border-slate-800/60 py-6 text-center text-xs text-slate-500">
-            StudyAI &bull; AI-Powered University Learning Platform &bull; Phase 6: Semantic Retrieval
+            StudyAI &bull; AI-Powered University Learning Platform &bull; Phase 7: Grounded RAG &amp; AI Answer Generation
           </footer>
         </div>
       </AuthProvider>

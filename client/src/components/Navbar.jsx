@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { GraduationCap, LogOut, Shield, BookOpen, Layers, Activity, User, Search } from 'lucide-react';
+import { GraduationCap, LogOut, Shield, BookOpen, Layers, Activity, User, Search, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function Navbar() {
@@ -28,7 +28,7 @@ export default function Navbar() {
                 StudyAI
               </span>
               <span className="ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-800 text-indigo-400 border border-indigo-500/30">
-                Phase 6
+                Phase 7
               </span>
             </div>
           </Link>
@@ -36,6 +36,18 @@ export default function Navbar() {
           {/* Navigation Links */}
           {isAuthenticated && (
             <nav className="hidden md:flex items-center gap-1">
+              <Link
+                to="/assistant"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${
+                  isActive('/assistant')
+                    ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                Study Assistant
+              </Link>
+
               <Link
                 to="/modules"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${

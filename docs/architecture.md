@@ -385,4 +385,64 @@ Key components:
 ```
 
 > [!NOTE]
-> **Strict Architectural Boundary**: Phase 6 ends with chunk retrieval and score projection. Generation of LLM answers, chat completions, RAG prompt construction, and citation generation belong to Phase 7.
+> **Strict Architectural Boundary**: Phase 6 focused strictly on retrieval. Generation of grounded LLM answers and application citations are implemented in Phase 7.
+
+---
+
+## 12. Phase 7: Grounded RAG & Gemini Generation Architecture
+
+### 12.1 Overview & Responsibilities
+Phase 7 implements the complete production-grade Retrieval-Augmented Generation (RAG) system, connecting semantic search to Google Gemini generative models while enforcing strict syllabus grounding and zero-hallucination policies.
+
+Key service components:
+- **`context.service.js`** (`server/src/services/ai/`):
+  - Formats retrieved chunks into labeled source blocks (`[SOURCE 1]`, `[SOURCE 2]`) with provenance headers (`Document`, `Module`, `Pages`, `Section`, `Chunk #`).
+  - Enforces `RAG_MAX_CONTEXT_CHARS` (default: 12,000 characters) to avoid context overflow while preserving top-ranked chunks.
+  - Builds verified, application-generated citations (`documentId`, `documentName`, `moduleCode`, `chunkIndex`, `pageStart`, `pageEnd`, `sectionHeading`).
+- **`generation.service.js`** (`server/src/services/ai/`):
+  - Communicates with Google Gemini via `@google/genai` using model `gemini-2.0-flash` (or `GEMINI_GENERATION_MODEL`).
+  - Enforces conservative generation parameters (`temperature: 0.2`, `maxOutputTokens: 2048`).
+  - Embeds strict prompt injection defenses: Treats reference materials strictly as untrusted DATA rather than system instructions.
+  - Mandates explicit insufficient-information behavior: Returns *"I couldn't find enough information about this in the provided study materials."* whenever context is inadequate.
+- **`rag.service.js`** (`server/src/services/ai/`):
+  - Orchestrates the full pipeline: Input Validation ➔ Semantic Retrieval ➔ Knowledge-Gap Short-Circuit (no Gemini call if 0 chunks) ➔ Context & Citation Construction ➔ Gemini Generation ➔ Final API Response Contract.
+- **`rag.controller.js` & `rag.routes.js`**:
+  - Exposes authenticated `POST /api/rag/ask`.
+- **Frontend Study Assistant (`StudyAssistantPage.jsx`)**:
+  - Interactive student assistant interface with module scoping, chat thread, grounded answer rendering, and clickable source citation cards.
+
+### 12.2 Grounded RAG Pipeline Diagram
+```
+[User Question]
+       │
+       ▼
+[Authorized Retrieval via Phase 6]
+       │  Student ──► Scoped to enrolled modules
+       │  Admin   ──► Global or module-filtered
+       ▼
+[Retrieved DocumentChunks from Atlas]
+       │
+       ├───► (0 chunks found) ──► Short-circuit: "I couldn't find enough information..."
+       │
+       ▼ (> 0 chunks)
+[Context Builder (context.service.js)]
+       │  - Label [SOURCE 1], [SOURCE 2]
+       │  - Enforce RAG_MAX_CONTEXT_CHARS (12,000)
+       │  - Construct verified citations array
+       ▼
+[Grounded Prompt Construction]
+       │  - System instruction: reference data only (prompt injection defense)
+       │  - Strict grounding: no outside knowledge, no hallucinated citations
+       ▼
+[Google Gemini Generation (@google/genai)]
+       │  - Model: gemini-2.0-flash (temperature: 0.2)
+       ▼
+[Final RAG Response Contract]
+       │  - question
+       │  - grounded answer
+       │  - authoritative source citations
+       │  - retrieval count
+       ▼
+[React Study Assistant Interface]
+```
+
