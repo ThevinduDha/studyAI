@@ -23,18 +23,19 @@ PDF ──► Safe Disk Storage ──► Text Extraction (pdf-parse) ──► 
 PHASE 4 (Complete):
 Extracted Text ──► Text Normalization ──► Hierarchical Semantic Chunking ──► DocumentChunk Collection
 
-PHASE 5 (Current Completed):
+PHASE 5 (Complete):
 DocumentChunk ──► Gemini Embeddings (@google/genai, gemini-embedding-2, 768 dims) ──► Atlas Vector Search Index
 
-PHASE 6 (Next Phase):
-User Query ──► Query Embedding ──► Atlas Vector Search ($vectorSearch) ──► Semantic Retrieval
+PHASE 6 (Current Completed):
+User Question ──► Query Embedding (RETRIEVAL_QUERY) ──► Atlas Vector Search ($vectorSearch) ──► Grounded Retrieval
 
-PHASE 7+ (Future Phases):
+PHASE 7+ (Next Phases):
 Retrieved Chunks ──► Grounded Prompt Construction ──► Gemini Generative LLM Synthesis
 ```
 
 > [!IMPORTANT]
-> **Phase 5 Boundary**: Phase 5 focuses exclusively on dense vector embedding generation and MongoDB Atlas Vector Search index infrastructure. Absolutely NO query embeddings, semantic retrieval endpoints, `$vectorSearch` query pipelines, top-k ranking, or LLM generative answer calls are implemented in Phase 5.
+> **Phase 6 Boundary**: Phase 6 implements semantic retrieval and vector similarity search against course chunks in MongoDB Atlas Vector Search. Absolutely NO generative LLM synthesis, chat completions, RAG prompt construction, or chatbot responses are implemented in Phase 6.
+
 
 ---
 
@@ -146,7 +147,29 @@ Retrieved Chunks ──► Grounded Prompt Construction ──► Gemini Generat
   - Status: Verified `READY` and `queryable: true` on live MongoDB Atlas cluster.
 - **Management & Verification**: Programmatic management via `server/src/config/vectorIndex.js` and JSON definition `server/src/config/vectorSearchIndex.json`.
 
+### 3.6 Semantic Retrieval & Pre-filtering Pipeline (`retrieval.service.js` — Phase 6 Active)
+- **SDK**: Official `@google/genai` JavaScript SDK.
+- **Query Embedding Model**: `gemini-embedding-2` with `taskType: 'RETRIEVAL_QUERY'`.
+- **Query Dimensions**: Enforced 768 dimensions (finite numeric numbers, validated by `validateVector`).
+- **Endpoint**: `POST /api/retrieval/search` (Protected via JWT authentication).
+- **Security & Enrollment Scoping**:
+  - **Student Role**: Strictly scoped to enrolled modules (`user.enrolledModules`).
+    - If `moduleId` is provided, student enrollment is verified; unauthorized access returns `403 Forbidden`.
+    - If `documentId` is provided, document existence and module enrollment are verified; unauthorized access returns `403 Forbidden`.
+    - If neither is provided, vector search is pre-filtered by `{ module: { $in: studentEnrolledModuleObjectIds } }`. Students with 0 enrolled modules receive `{ question, results: [], count: 0 }` safely.
+  - **Admin Role**: Unrestricted access. Can query globally across all documents and modules, or filter by specific module or document.
+- **Atlas Vector Search Aggregation**:
+  - Pre-filter: Scoping is applied *before* similarity scoring inside `$vectorSearch.filter` on indexed paths `module` and `document`.
+  - Candidates: `numCandidates` dynamically computed as `Math.max(RETRIEVAL_NUM_CANDIDATES, topK * 5)`.
+  - Limit: Configurable `topK` (default: 5, strictly clamped between 1 and 20).
+  - Relevance Score: Projected directly from MongoDB Atlas using `{ $meta: 'vectorSearchScore' }`.
+- **Response Privacy**:
+  - Stored chunk embeddings and query vector arrays are **never** returned across HTTP.
+  - Returns grounded chunk text, relevance score, chunk index, document title, module code, and metadata.
+- **Strict Boundary**: Phase 6 ends immediately upon returning retrieved chunks. Absolutely NO answer generation or RAG prompt synthesis is performed.
+
 ---
+
 
 ## 4. Grounded Prompt Engineering & Citation Strategy
 

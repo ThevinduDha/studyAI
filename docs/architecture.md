@@ -335,4 +335,54 @@ Architectural components:
 2. **Selective Re-embedding**: `POST /api/documents/:id/re-embed` allows administrators to regenerate embeddings across existing chunks without re-extracting or re-chunking the original PDF.
 3. **Information Concealment**: Vector arrays (`embedding`) are configured with `select: false` on Mongoose schema and stripped in `toJSON()`, ensuring massive float arrays are never sent across HTTP to normal client endpoints.
 
+---
 
+## 11. Phase 6: Semantic Retrieval Architecture
+
+### 11.1 Overview & Responsibilities
+Phase 6 implements the complete dense vector semantic retrieval pipeline connecting user queries to stored document chunks via MongoDB Atlas Vector Search.
+
+Key components:
+- **`retrieval.service.js`** (`server/src/services/ai/`):
+  - Validates question string (non-empty, length <= 2000).
+  - Enforces user enrollment authorization: students are strictly scoped to enrolled modules (`user.enrolledModules`).
+  - Resolves `$vectorSearch.filter` on indexed paths `module` and `document`.
+  - Generates 768-dim query vector using `embeddingService.generateQueryEmbedding` with `taskType: 'RETRIEVAL_QUERY'`.
+  - Executes `$vectorSearch` pipeline on MongoDB Atlas cluster with cosine similarity.
+  - Projects relevance score via `{ $meta: 'vectorSearchScore' }` and joins friendly document and module titles.
+  - Strictly excludes `embedding` and `queryVector` from all response payloads.
+- **`retrieval.controller.js` & `retrieval.routes.js`**:
+  - Mounts `POST /api/retrieval/search` behind `requireAuth`.
+- **Frontend Test UI (`SemanticSearchPage.jsx`)**:
+  - Allows testing semantic retrieval with question input, module filter, document filter, and topK slider.
+
+### 11.2 Semantic Retrieval Pipeline Diagram
+```
+[User Question]
+       │
+       ▼
+[Input Validation & Auth Resolution]
+       │  Student ──► Pre-filter by enrolled modules ($in: [...])
+       │  Admin   ──► Global search or optional filter
+       ▼
+[Query Embedding Generation]
+       │  Model: "gemini-embedding-2"
+       │  Task Type: "RETRIEVAL_QUERY"
+       │  Output: 768-dimensional query vector
+       ▼
+[MongoDB Atlas $vectorSearch]
+       │  Index: document_chunks_vector_index
+       │  Path: embedding
+       │  Similarity: Cosine
+       │  numCandidates: Math.max(50, topK * 5)
+       │  limit: topK (1-20)
+       │  filter: { module / document }
+       ▼
+[Top-K Ranked DocumentChunks + vectorSearchScore + Metadata]
+       │  (No vectors exposed)
+       ▼
+[API Response & Frontend Knowledge Search UI]
+```
+
+> [!NOTE]
+> **Strict Architectural Boundary**: Phase 6 ends with chunk retrieval and score projection. Generation of LLM answers, chat completions, RAG prompt construction, and citation generation belong to Phase 7.

@@ -129,6 +129,7 @@ Discrete, segmented text passages extracted from documents and vector-embedded f
   - Field: `embedding` (Type: `vector`, `numDimensions: 768`, `similarity: cosine`)
   - Filter Fields: `module` (Type: `filter`), `document` (Type: `filter`)
   - Status: `READY` (Verified queryable on Atlas cluster)
+  - Query Interface: Phase 6 `$vectorSearch` pipeline in `retrieval.service.js` with pre-filtering by authorized `module` / `document` and score projection via `{ $meta: 'vectorSearchScore' }`
 
 ---
 

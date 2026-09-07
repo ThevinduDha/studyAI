@@ -237,11 +237,88 @@ export const generateEmbeddings = async (texts, options = {}) => {
   return results;
 };
 
+const QUERY_TASK_TYPE = 'RETRIEVAL_QUERY';
+const DEFAULT_MAX_QUERY_LENGTH = 2000;
+
+/**
+ * Generates an embedding vector for a search query/question (Phase 6)
+ * Uses taskType: 'RETRIEVAL_QUERY' and enforces 768 dimensions.
+ *
+ * @param {string} question - User question string
+ * @param {Object} [options] - Options { model, dimensions, client, apiKey }
+ * @returns {Promise<Array<number>>} - Validated 768-dimensional query vector
+ */
+export const generateQueryEmbedding = async (question, options = {}) => {
+  if (!question || typeof question !== 'string') {
+    const error = new Error('Question is required and must be a string');
+    error.code = 'INVALID_INPUT';
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const trimmed = question.trim();
+  if (trimmed.length === 0) {
+    const error = new Error('Question cannot be empty or whitespace only');
+    error.code = 'INVALID_INPUT';
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const maxLen = parseInt(process.env.RETRIEVAL_MAX_QUERY_LENGTH, 10) || DEFAULT_MAX_QUERY_LENGTH;
+  if (trimmed.length > maxLen) {
+    const error = new Error(`Question exceeds maximum allowed length of ${maxLen} characters`);
+    error.code = 'QUERY_TOO_LONG';
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const model = options.model || process.env.GEMINI_EMBEDDING_MODEL || DEFAULT_MODEL;
+  const dimensions = options.dimensions || parseInt(process.env.GEMINI_EMBEDDING_DIMENSIONS, 10) || DEFAULT_DIMENSIONS;
+  const client = options.client || getClient(options.apiKey);
+
+  try {
+    const response = await client.models.embedContent({
+      model,
+      contents: trimmed,
+      config: {
+        taskType: QUERY_TASK_TYPE,
+        outputDimensionality: dimensions
+      }
+    });
+
+    const vector =
+      response?.embeddings?.[0]?.values ||
+      response?.embedding?.values ||
+      (Array.isArray(response?.values) ? response.values : null);
+
+    return validateVector(vector, dimensions);
+  } catch (err) {
+    if (
+      err.code === 'EMBEDDING_DIMENSION_MISMATCH' ||
+      err.code === 'INVALID_INPUT' ||
+      err.code === 'QUERY_TOO_LONG' ||
+      err.code === 'INVALID_EMBEDDING_RESPONSE' ||
+      err.code === 'INVALID_EMBEDDING_VALUES'
+    ) {
+      throw err;
+    }
+
+    const sanitizedError = new Error(
+      err.message ? `Query embedding generation failed: ${err.message}` : 'Query embedding generation failed'
+    );
+    sanitizedError.code = err.code || 'EMBEDDING_GENERATION_FAILED';
+    sanitizedError.statusCode = err.statusCode || 502;
+    throw sanitizedError;
+  }
+};
+
 export default {
   isConfigured,
   getEmbeddingConfig,
   getClient,
   validateVector,
   generateEmbedding,
-  generateEmbeddings
+  generateEmbeddings,
+  generateQueryEmbedding
 };
+

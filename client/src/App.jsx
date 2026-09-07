@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import ModulesPage from './pages/ModulesPage.jsx';
 import AdminModulesPage from './pages/AdminModulesPage.jsx';
+import SemanticSearchPage from './pages/SemanticSearchPage.jsx';
 import Phase1OverviewPage from './pages/Phase1OverviewPage.jsx';
 
 function RootRedirect() {
@@ -39,6 +40,17 @@ export default function App() {
                 }
               />
 
+              {/* Protected Semantic Search Route (Phase 6) */}
+              <Route
+                path="/search"
+                element={
+                  <ProtectedRoute>
+                    <SemanticSearchPage />
+                  </ProtectedRoute>
+                }
+              />
+
+
               {/* Protected Admin Only Routes */}
               <Route
                 path="/admin/modules"
@@ -57,7 +69,7 @@ export default function App() {
             </Routes>
           </main>
           <footer className="border-t border-slate-800/60 py-6 text-center text-xs text-slate-500">
-            StudyAI &bull; AI-Powered University Learning Platform &bull; Phase 2: Authentication &amp; Module Management
+            StudyAI &bull; AI-Powered University Learning Platform &bull; Phase 6: Semantic Retrieval
           </footer>
         </div>
       </AuthProvider>

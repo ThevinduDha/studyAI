@@ -211,9 +211,66 @@ This document details the planned REST API routes, HTTP verbs, payload structure
     }
     ```
 
+### 2.5 Semantic Retrieval (`/api/retrieval` — Phase 6 Active)
+- **`POST /api/retrieval/search`**
+  - **Auth**: `Bearer <token>` (Student: enrolled modules only; Admin: global or scoped)
+  - **Description**: Executes vector similarity search against MongoDB Atlas Vector Search using `gemini-embedding-2` (`RETRIEVAL_QUERY`, 768d) with cosine similarity and authorization pre-filtering.
+  - **Request Body**:
+    ```json
+    {
+      "question": "What is the difference between supervised and unsupervised learning?",
+      "moduleId": "67ce123...",
+      "documentId": "67ce456...",
+      "topK": 5
+    }
+    ```
+    - `question` *(string, required)*: Max 2000 characters.
+    - `moduleId` *(string, optional)*: MongoDB ObjectId. Enforces enrollment check for students.
+    - `documentId` *(string, optional)*: MongoDB ObjectId. Enforces module enrollment check for students.
+    - `topK` *(number, optional)*: Integer between 1 and 20. Default: 5.
+  - **Response `200 OK`**:
+    ```json
+    {
+      "success": true,
+      "data": {
+        "question": "What is the difference between supervised and unsupervised learning?",
+        "results": [
+          {
+            "chunkId": "67ce789...",
+            "documentId": "67ce456...",
+            "documentName": "Lecture-03-ML.pdf",
+            "moduleId": "67ce123...",
+            "moduleCode": "CS401",
+            "moduleName": "Machine Learning",
+            "chunkIndex": 3,
+            "text": "Supervised learning relies on labeled training pairs...",
+            "characterCount": 420,
+            "tokenCount": 70,
+            "score": 0.8742,
+            "metadata": {
+              "originalName": "Lecture-03-ML.pdf",
+              "pageStart": 4,
+              "pageEnd": 5,
+              "sectionHeading": "Supervised vs Unsupervised",
+              "sourceType": "pdf"
+            }
+          }
+        ],
+        "count": 1
+      }
+    }
+    ```
+  - **Error Responses**:
+    - `400 Bad Request`: Empty question, invalid `topK`, invalid ObjectId format, or document/module mismatch.
+    - `401 Unauthorized`: Missing or invalid JWT.
+    - `403 Forbidden`: Student attempting to query a non-enrolled module or document.
+    - `404 Not Found`: Specified `moduleId` or `documentId` does not exist.
+    - `503 Service Unavailable`: `GEMINI_API_KEY` not configured.
+
 ---
 
-## 3. Planned Future Endpoints (Phase 6+)
+## 3. Planned Future Endpoints (Phase 7+)
+
 
 ### 3.5 AI & RAG (`/api/ai`)
 - **`POST /api/ai/chat`** — Submit a contextual question scoped to a module or document.
