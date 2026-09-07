@@ -14,6 +14,22 @@ General-purpose Large Language Models (LLMs) can produce plausible-sounding but 
 3. Every claim in the generated response can be attributed back to specific document names and page numbers.
 4. If the uploaded literature does not contain sufficient information to answer the question, the system clearly states this limitation instead of fabricating an answer.
 
+### 1.1 Incremental Roadmap & Architecture Boundaries
+
+```
+PHASE 3 (Current Completed):
+PDF ──► Safe Disk Storage ──► Text Extraction (pdf-parse) ──► Saved in MongoDB
+
+PHASE 4 (Next Phase):
+Extracted Text ──► Semantic Sliding-Window Chunking (chunkDocumentText)
+
+PHASE 5+ (Future Phases):
+Chunks ──► Gemini Embeddings (text-embedding-004) ──► Vector Database ──► Retrieval ──► LLM Synthesis
+```
+
+> [!IMPORTANT]
+> **Phase 3 Boundary**: This phase strictly implements the document management, secure disk upload, and PDF text extraction foundation. No embeddings, vector databases, or LLM inference calls are executed in Phase 3.
+
 ---
 
 ## 2. End-to-End RAG Ingestion & Query Pipeline

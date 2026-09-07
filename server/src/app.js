@@ -3,6 +3,7 @@ import cors from 'cors';
 import healthRoutes from './routes/health.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import moduleRoutes from './routes/module.routes.js';
+import documentRoutes from './routes/document.routes.js';
 import { notFoundHandler } from './middleware/notFoundHandler.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -20,10 +21,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/modules', moduleRoutes);
+app.use('/api/documents', documentRoutes);
 
 // Fallback & Error Handling
 app.use(notFoundHandler);
 app.use(errorHandler);
+
 
 export default app;
 

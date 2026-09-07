@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import moduleService from '../services/module.service.js';
+import documentService from '../services/document.service.js';
+import DocumentUploadModal from '../components/DocumentUploadModal.jsx';
+import DocumentList from '../components/DocumentList.jsx';
 import {
   Shield,
   Plus,
@@ -11,7 +14,8 @@ import {
   FileText,
   Loader2,
   X,
-  BookOpen
+  BookOpen,
+  UploadCloud
 } from 'lucide-react';
 
 export default function AdminModulesPage() {
@@ -26,6 +30,13 @@ export default function AdminModulesPage() {
   const [editingModule, setEditingModule] = useState(null);
   const [deletingModule, setDeletingModule] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Document Management Modal states
+  const [activeDocModule, setActiveDocModule] = useState(null);
+  const [moduleDocs, setModuleDocs] = useState([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
 
   // Form fields
   const [formData, setFormData] = useState({
@@ -126,6 +137,45 @@ export default function AdminModulesPage() {
       setSubmitting(false);
     }
   };
+
+  const openDocManager = async (mod) => {
+    setActiveDocModule(mod);
+    setLoadingDocs(true);
+    try {
+      const docs = await documentService.getDocuments(mod._id);
+      setModuleDocs(docs || []);
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message || 'Failed to load module documents' });
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
+
+  const handleRefreshActiveDocs = async () => {
+    if (!activeDocModule) return;
+    setLoadingDocs(true);
+    try {
+      const docs = await documentService.getDocuments(activeDocModule._id);
+      setModuleDocs(docs || []);
+    } catch (err) {
+      console.warn('Failed to refresh documents:', err.message);
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
+
+  const handleDocUploaded = (newDoc) => {
+    setModuleDocs((prev) => [newDoc, ...prev]);
+    setFeedback({ type: 'success', message: `Document "${newDoc.originalName}" uploaded successfully!` });
+    fetchModules();
+  };
+
+  const handleDocDeleted = (deletedId) => {
+    setModuleDocs((prev) => prev.filter((d) => d._id !== deletedId));
+    setFeedback({ type: 'success', message: 'Document deleted successfully.' });
+    fetchModules();
+  };
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -265,6 +315,14 @@ export default function AdminModulesPage() {
                     </td>
                     <td className="px-5 py-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => openDocManager(mod)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-900/50 transition cursor-pointer text-xs font-medium"
+                          title="Manage course documents"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          <span>Docs</span>
+                        </button>
                         <button
                           onClick={() => openEditModal(mod)}
                           className="p-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
@@ -409,6 +467,61 @@ export default function AdminModulesPage() {
           </div>
         </div>
       )}
+
+      {/* Document Management Modal for Module */}
+      {activeDocModule && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="max-w-3xl w-full rounded-2xl border border-slate-800 bg-[#0e1526] p-6 shadow-2xl relative max-h-[85vh] flex flex-col">
+            <div className="flex items-start justify-between pb-4 border-b border-slate-800/80">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-bold text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800/50">
+                    {activeDocModule.moduleCode}
+                  </span>
+                  <h3 className="text-base font-bold text-white">Course Documents</h3>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">{activeDocModule.moduleName}</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 cursor-pointer transition"
+                >
+                  <UploadCloud className="h-3.5 w-3.5" />
+                  <span>Upload PDF</span>
+                </button>
+                <button
+                  onClick={() => setActiveDocModule(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 cursor-pointer transition"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-4">
+              <DocumentList
+                documents={moduleDocs}
+                loading={loadingDocs}
+                onRefresh={handleRefreshActiveDocs}
+                onDelete={handleDocDeleted}
+                canDelete={true}
+                showModule={false}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload PDF Modal */}
+      <DocumentUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        moduleId={activeDocModule?._id}
+        moduleCode={activeDocModule?.moduleCode}
+        onSuccess={handleDocUploaded}
+      />
 
       {/* Delete Confirmation Modal */}
       {deletingModule && (

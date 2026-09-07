@@ -66,21 +66,30 @@ Represents an academic course module offered at the university.
 
 ---
 
-### 2.3 `documents`
-Metadata for uploaded lecture slides, notes, syllabi, and readings.
+### 2.3 `documents` (`server/src/models/document.model.js` — Phase 3 Active)
+Metadata, file storage references, and raw extracted text for uploaded course literature.
+
+> [!NOTE]
+> Binary PDF data is stored safely on the filesystem (`server/uploads/documents/`), **never** inside MongoDB. MongoDB strictly stores document metadata and extracted text.
 
 | Field | Type | Description | Constraints & Indexing |
 |---|---|---|---|
 | `_id` | ObjectId | Primary Key | Auto-generated |
-| `userId` | ObjectId | Reference to `users._id` | Required, indexed |
-| `moduleId` | ObjectId | Reference to `modules._id` | Required, indexed |
-| `fileName` | String | Original uploaded filename | Required, sanitized |
-| `fileUrl` | String | Local storage path or cloud object storage URL | Required |
-| `fileType` | String | MIME type (e.g., `application/pdf`) | Required |
-| `processingStatus`| String | Ingestion lifecycle state (`PENDING`, `PROCESSING`, `READY`, `FAILED`) | Default: `PENDING`, indexed |
-| `pageCount` | Number | Total extracted pages | Default: 0 |
+| `module` | ObjectId | Reference to `Module._id` | Required, indexed |
+| `uploadedBy` | ObjectId | Reference to `User._id` | Required |
+| `originalName`| String | Original client-side filename | Required, trimmed |
+| `storedName` | String | Collision-free unique filename on disk | Required |
+| `filePath` | String | Filesystem path on server | Required |
+| `mimeType` | String | MIME type (`application/pdf`) | Required |
+| `fileSize` | Number | File size in bytes | Required, max 25MB |
+| `pageCount` | Number | Total extracted pages from PDF | Optional, default: 0 |
+| `extractedText`| String | Cleaned, normalized plain text extracted from PDF | Optional, default: `""` |
+| `status` | String | Lifecycle state (`uploaded`, `processing`, `processed`, `failed`) | Enum, default: `uploaded`, indexed |
+| `processingError`| String | Error message if extraction failed | Optional |
 | `createdAt` | Date | Upload timestamp | Auto-managed timestamp |
-| `updatedAt` | Date | Last processing update timestamp | Auto-managed timestamp |
+| `updatedAt` | Date | Ingestion timestamp | Auto-managed timestamp |
+
+*Index*: Compound index on `{ module: 1, createdAt: -1 }` for fast module document feeds.
 
 ---
 

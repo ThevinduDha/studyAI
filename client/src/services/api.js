@@ -16,9 +16,10 @@ export class ApiError extends Error {
 
 const request = async (endpoint, options = {}) => {
   const token = localStorage.getItem('studyai_token');
+  const isFormData = options.body instanceof FormData;
 
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers
   };
@@ -62,9 +63,12 @@ export const api = {
   get: (endpoint, options = {}) => request(endpoint, { ...options, method: 'GET' }),
   post: (endpoint, body, options = {}) =>
     request(endpoint, { ...options, method: 'POST', body: JSON.stringify(body) }),
+  upload: (endpoint, formData, options = {}) =>
+    request(endpoint, { ...options, method: 'POST', body: formData }),
   put: (endpoint, body, options = {}) =>
     request(endpoint, { ...options, method: 'PUT', body: JSON.stringify(body) }),
   delete: (endpoint, options = {}) => request(endpoint, { ...options, method: 'DELETE' })
 };
+
 
 export default api;

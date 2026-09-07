@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import moduleService from '../services/module.service.js';
+import documentService from '../services/document.service.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import DocumentList from '../components/DocumentList.jsx';
 import {
   BookOpen,
   Search,
@@ -28,6 +30,9 @@ export default function ModulesPage() {
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
+  const [moduleDocs, setModuleDocs] = useState([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+
 
   const fetchModules = useCallback(async () => {
     setLoading(true);
@@ -85,6 +90,36 @@ export default function ModulesPage() {
       setFeedback({ type: 'error', message: err.message || 'Unenrollment failed' });
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleOpenDetails = async (mod) => {
+    setSelectedModule(mod);
+    setModuleDocs([]);
+    const enrolled = isEnrolled(mod._id);
+    if (user?.role === 'admin' || enrolled) {
+      setLoadingDocs(true);
+      try {
+        const docs = await documentService.getDocuments(mod._id);
+        setModuleDocs(docs || []);
+      } catch (err) {
+        console.warn('Failed to load module documents:', err.message);
+      } finally {
+        setLoadingDocs(false);
+      }
+    }
+  };
+
+  const handleRefreshDocs = async () => {
+    if (!selectedModule) return;
+    setLoadingDocs(true);
+    try {
+      const docs = await documentService.getDocuments(selectedModule._id);
+      setModuleDocs(docs || []);
+    } catch (err) {
+      console.warn('Failed to refresh documents:', err.message);
+    } finally {
+      setLoadingDocs(false);
     }
   };
 
@@ -252,20 +287,16 @@ export default function ModulesPage() {
                         {mod.semester} &bull; {mod.year}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                      <span>{mod.documents?.length || 0} Course Documents</span>
-                    </div>
                   </div>
                 </div>
 
                 {/* Bottom Actions */}
                 <div className="flex items-center gap-2 pt-3 border-t border-slate-800/80">
                   <button
-                    onClick={() => setSelectedModule(mod)}
+                    onClick={() => handleOpenDetails(mod)}
                     className="flex-1 py-1.5 px-3 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 text-xs font-medium transition cursor-pointer"
                   >
-                    View Details
+                    View Details &amp; Documents
                   </button>
 
                   {user?.role === 'student' && (
@@ -307,10 +338,10 @@ export default function ModulesPage() {
         </div>
       )}
 
-      {/* Module Details Modal */}
+      {/* Module Details & Documents Modal */}
       {selectedModule && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="max-w-lg w-full rounded-xl border border-slate-800 bg-[#0e1526] p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="max-w-2xl w-full max-h-[90vh] rounded-xl border border-slate-800 bg-[#0e1526] p-6 shadow-2xl flex flex-col relative animate-in fade-in zoom-in-95 duration-150">
             <button
               onClick={() => setSelectedModule(null)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-md bg-slate-800 cursor-pointer"
@@ -318,7 +349,7 @@ export default function ModulesPage() {
               <X className="h-4 w-4" />
             </button>
 
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-1">
               <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
                 {selectedModule.moduleCode}
               </span>
@@ -329,7 +360,7 @@ export default function ModulesPage() {
 
             <h2 className="text-lg font-bold text-white mb-3">{selectedModule.moduleName}</h2>
 
-            <div className="space-y-4 text-xs text-slate-300 mb-6">
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4 text-xs text-slate-300">
               <div>
                 <h4 className="text-slate-400 font-semibold mb-1">Description / Syllabus</h4>
                 <p className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 leading-relaxed">
@@ -344,15 +375,43 @@ export default function ModulesPage() {
                 </div>
 
                 <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-                  <div className="text-slate-400 text-[11px]">RAG Documents</div>
+                  <div className="text-slate-400 text-[11px]">Enrollment Status</div>
                   <div className="font-medium text-white mt-0.5">
-                    {selectedModule.documents?.length || 0} files indexed
+                    {isEnrolled(selectedModule._id) ? (
+                      <span className="text-emerald-400">Enrolled (Active)</span>
+                    ) : (
+                      <span className="text-slate-400">Not Enrolled</span>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* Course Documents Section */}
+              <div className="pt-2 border-t border-slate-800/80">
+                <h4 className="text-xs font-semibold text-white mb-2 flex items-center gap-1.5">
+                  <FileText className="h-4 w-4 text-indigo-400" />
+                  <span>Course Documents &amp; Ingested Slides</span>
+                </h4>
+
+                {user?.role === 'admin' || isEnrolled(selectedModule._id) ? (
+                  <DocumentList
+                    documents={moduleDocs}
+                    loading={loadingDocs}
+                    onRefresh={handleRefreshDocs}
+                    canDelete={user?.role === 'admin'}
+                    emptyMessage="No PDF documents have been uploaded for this course module yet."
+                  />
+                ) : (
+                  <div className="p-4 rounded-lg border border-slate-800 bg-slate-900/40 text-center">
+                    <p className="text-xs text-slate-400">
+                      Enroll in this module to access and study its ingested lecture slides and literature.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800 mt-4">
               <button
                 onClick={() => setSelectedModule(null)}
                 className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition cursor-pointer"
@@ -366,3 +425,4 @@ export default function ModulesPage() {
     </div>
   );
 }
+

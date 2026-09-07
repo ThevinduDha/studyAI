@@ -29,8 +29,12 @@ pnpm-debug.log*
 
 # Uploads & Temporary Storage
 uploads/
+server/uploads/
+server/uploads/*
+!server/uploads/.gitkeep
 tmp/
 temp/
+
 
 # OS and Editor Artifacts
 .DS_Store

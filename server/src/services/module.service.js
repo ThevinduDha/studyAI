@@ -1,5 +1,8 @@
+import fs from 'node:fs/promises';
 import Module from '../models/module.model.js';
 import User from '../models/user.model.js';
+import Document from '../models/document.model.js';
+
 
 /**
  * Retrieve all modules
@@ -117,7 +120,7 @@ export const updateModule = async (moduleId, updateData) => {
 };
 
 /**
- * Delete a module and cascade remove from student enrollments (Admin only)
+ * Delete a module and cascade remove from student enrollments and document records (Admin only)
  * @param {string} moduleId
  * @returns {Object} Deleted module
  */
@@ -136,8 +139,22 @@ export const deleteModule = async (moduleId) => {
     { $pull: { enrolledModules: moduleId } }
   );
 
+  // Cascade delete associated documents and clean up files
+  try {
+    const documents = await Document.find({ module: moduleId });
+    for (const doc of documents) {
+      if (doc.filePath) {
+        await fs.unlink(doc.filePath).catch(() => {});
+      }
+    }
+    await Document.deleteMany({ module: moduleId });
+  } catch (docErr) {
+    console.warn(`[StudyAI Ingestion] Notice: Error cleaning up documents for module ${moduleId}:`, docErr.message);
+  }
+
   return module;
 };
+
 
 /**
  * Enroll student into a module

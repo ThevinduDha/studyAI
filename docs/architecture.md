@@ -188,3 +188,48 @@ The core philosophy of StudyAI is **grounded intelligence**: the AI model priori
 - **Student Enrollment**: Students can self-enroll into available modules. Duplicate enrollments are checked and rejected with `400 Bad Request`.
 - **Identity Isolation**: Enrollment operations strictly use `req.user._id` decoded from the verified JWT payload, preventing students from modifying other users' enrollments.
 
+---
+
+## 8. Phase 3: Document Management & Ingestion Foundation
+
+### 8.1 Scope & Incremental Pipeline Boundaries
+- **Phase 3 (Current)**: `PDF Upload` ──► `Text Extraction` ──► `Extracted Text & Page Count Saved in MongoDB`
+- **Phase 4 (Next)**: `Extracted Text` ──► `Semantic Sliding-Window Chunking` (`chunkDocumentText`)
+- **Phase 5+ (Future)**: `Chunks` ──► `Gemini Vector Embeddings` ──► `Vector DB` ──► `Semantic Retrieval` ──► `LLM Synthesis`
+
+### 8.2 Safe Storage & Multer Upload Strategy
+- **Path Isolation**: Files are stored strictly outside the source tree in `server/uploads/documents/`.
+- **Git Protection**: `server/uploads/` is strictly ignored in `.gitignore`.
+- **Path Traversal Prevention**: Client-supplied filenames are never used for filesystem operations. Stored filenames use cryptographic entropy: `doc-${Date.now()}-${randomHex}.pdf`.
+- **Validation**:
+  - File extension: `.pdf` (case-insensitive).
+  - MIME type: `application/pdf`.
+  - Max file size: 25MB.
+- **Multer Middleware**: Wrapped in `uploadDocumentMiddleware` to return clean, standardized JSON errors rather than Express default error stack traces.
+
+### 8.3 Asynchronous Ingestion Architecture
+```
+[POST /api/documents] (Admin)
+         │
+         ▼
+[Multer validates & writes to server/uploads/documents/]
+         │
+         ▼
+[Create Document Record (status: "uploaded")] ──► Return 201 Created immediately
+         │
+         ▼ (Background setImmediate)
+[Document Processing Service] ──► Status: "processing"
+         │
+         ▼
+[PDF Text Extractor (pdf-parse)] ──► Extract text & numpages, normalize whitespace
+         │
+         ├───► Success: Status = "processed", extractedText = "...", pageCount = N
+         └───► Failure: Status = "failed", processingError = sanitized message
+```
+
+### 8.4 Access Scoping & Cascade Cleanup
+- **Role-Based Upload/Delete**: `POST /api/documents` and `DELETE /api/documents/:id` require `admin` role.
+- **Enrollment Scoping for Students**: When students request `GET /api/documents` or `GET /api/documents/:id`, access is permitted **only** for modules where the student is actively enrolled in `enrolledModules`. Unenrolled requests receive `403 Forbidden`.
+- **Cascade Deletion**: When an administrator deletes a module (`DELETE /api/modules/:id`), all associated Document records and their corresponding physical disk files are unlinked and removed.
+
+

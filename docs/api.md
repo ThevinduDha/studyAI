@@ -93,14 +93,52 @@ This document details the planned REST API routes, HTTP verbs, payload structure
 
 ---
 
-## 3. Planned Future Endpoints (Phase 3+)
+### 2.4 Document Management (`/api/documents` — Phase 3 Active)
+- **`POST /api/documents`**
+  - **Auth**: `Bearer <token>` (Admin only)
+  - **Content-Type**: `multipart/form-data`
+  - **Form Fields**:
+    - `moduleId`: Target module ObjectId (required)
+    - `file` or `document`: PDF file binary (max 25MB, application/pdf only)
+  - **Response `201 Created`**:
+    ```json
+    {
+      "success": true,
+      "message": "Document uploaded successfully and queued for processing",
+      "data": {
+        "document": {
+          "_id": "67cc...",
+          "module": "67cb...",
+          "uploadedBy": "67ca...",
+          "originalName": "Lecture1_Algorithms.pdf",
+          "storedName": "doc-1788799269743-eea94f82d6c871a2.pdf",
+          "mimeType": "application/pdf",
+          "fileSize": 1048576,
+          "pageCount": 0,
+          "extractedText": "",
+          "status": "uploaded",
+          "createdAt": "2026-09-07T18:45:00.000Z"
+        }
+      }
+    }
+    ```
+- **`GET /api/documents`**
+  - **Auth**: `Bearer <token>` (Student or Admin)
+  - **Query Params**: `moduleId` or `module` (optional filter)
+  - **Authorization Scoping**: Students can only access documents belonging to enrolled modules. Querying an unenrolled module yields `403 Forbidden`. Admins have universal visibility.
+  - **Response `200 OK`**: Returns `{ success: true, data: { documents: [...] } }`
+- **`GET /api/documents/:id`**
+  - **Auth**: `Bearer <token>` (Student or Admin)
+  - **Authorization Scoping**: Enforces module enrollment for students.
+  - **Response `200 OK`**: Returns `{ success: true, data: { document: { ... } } }`
+- **`DELETE /api/documents/:id`**
+  - **Auth**: `Bearer <token>` (Admin only)
+  - **Description**: Deletes document metadata from MongoDB and safely unlinks the physical PDF file from the disk.
+  - **Response `200 OK`**: Returns `{ success: true, message: "Document '...' deleted successfully", data: { document } }`
 
+---
 
-### 3.4 Documents (`/api/documents`)
-- **`POST /api/documents/upload`** — Upload lecture PDF via `multipart/form-data` (`moduleId`, `file`). Initiates extraction & chunking.
-- **`GET /api/documents`** — List documents filtered by `moduleId`.
-- **`GET /api/documents/:id`** — Get document details, page count, and ingestion status (`PENDING`, `READY`, `FAILED`).
-- **`DELETE /api/documents/:id`** — Delete a document and its corresponding vector chunks.
+## 3. Planned Future Endpoints (Phase 4+)
 
 ### 3.5 AI & RAG (`/api/ai`)
 - **`POST /api/ai/chat`** — Submit a contextual question scoped to a module or document.
