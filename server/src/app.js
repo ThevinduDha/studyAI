@@ -7,6 +7,7 @@ import documentRoutes from './routes/document.routes.js';
 import retrievalRoutes from './routes/retrieval.routes.js';
 import ragRoutes from './routes/rag.routes.js';
 import summaryRoutes from './routes/summary.routes.js';
+import questionRoutes from './routes/question.routes.js';
 import { notFoundHandler } from './middleware/notFoundHandler.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -28,6 +29,7 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/retrieval', retrievalRoutes);
 app.use('/api/rag', ragRoutes);
 app.use('/api/summaries', summaryRoutes);
+app.use('/api/questions', questionRoutes);
 
 
 

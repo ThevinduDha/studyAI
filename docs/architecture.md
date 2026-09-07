@@ -472,4 +472,34 @@ Key components:
   - State-aware summary verification (checks existing summary without invoking Gemini on initial page load).
   - Cards for Overview, Key Concepts, Important Points, Exam Focus, Glossary Definitions, Examples, and Source Attribution.
 
+---
+
+## 14. Phase 9: Exam-Focused Question Generator Architecture
+
+### 14.1 Overview & Responsibilities
+Phase 9 adds an academic **Exam-Focused Question Generator** built directly on top of the established RAG and lecture summarization pipeline:
+
+- **`Question` Model** (`server/src/models/question.model.js`):
+  - Stores questions with enum types (`MCQ`, `TRUE_FALSE`, `SHORT_ANSWER`, `SCENARIO`) and difficulties (`2`, `3`, `4`).
+  - Contains `questionText`, `options`, `correctAnswer`, `explanation`, `examClue`, `commonTrap`, `topic`, `sourceChunks`, `generationModel`, `generationVersion`, `generatedBy`, and `isActive`.
+  - Indexes: `{ document: 1, isActive: 1, createdAt: -1 }`, `{ module: 1, isActive: 1, createdAt: -1 }`, and `{ document: 1, questionType: 1, difficulty: 1 }`.
+  - Strictly omits embedding vectors, disk paths, and secrets.
+- **`questionGeneration.service.js`** (`server/src/services/ai/`):
+  - Validates document IDs and enforces enrollment access control.
+  - Sequentially retrieves all `DocumentChunk` records for the lecture.
+  - Assembles bounded grounded context with prompt injection defenses.
+  - Invokes Google Gemini (`gemini-3.8-flash`) with structured JSON schema output.
+  - Validates schema, option counts (4 for MCQ), uniqueness, and answer matching.
+  - Normalizes text and prevents duplicate questions within batch and across document.
+  - Attaches verified application source attribution metadata.
+  - Supports answer masking (`hideAnswers: true`) for future Phase 10 quiz mode.
+- **`question.controller.js` & `question.routes.js`**:
+  - Exposes `POST /api/questions/generate`, `GET /api/questions/document/:documentId`, `GET /api/questions/module/:moduleId`, `GET /api/questions/:questionId`, and `DELETE /api/questions/:questionId` (admin-only).
+- **Frontend Exam Questions Interface (`ExamQuestionsPage.jsx`)**:
+  - Selectors for course module, lecture document, question type, difficulty (Level 2/3/4), and count (1–20).
+  - Question bank browser with individual and bulk answer/clue/trap reveal toggles.
+  - Verified source attribution chips linking to lecture chunks and page numbers.
+  - Admin single-click question deletion.
+
+
 

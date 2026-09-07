@@ -307,3 +307,66 @@ Student selects Module & Document
 3. **No Uncontrolled Calls**: The UI checks for existing summaries and displays them without calling Gemini on page load.
 4. **Authoritative Sources**: Source citations reflect actual MongoDB chunk metadata, preventing hallucinated citations.
 
+---
+
+## 6. Phase 9: Exam-Focused Question Generator
+
+### 6.1 Overview & Architecture
+Phase 9 introduces an academic **Exam-Focused Question Generator** built directly on top of the established RAG and lecture summarization pipeline:
+
+```
+PDF Document ──► Chunks ──► Embeddings ──► Vector Search ──► Retrieval
+                                                               │
+                                                               ▼
+                                                      Grounded Context
+                                                               │
+                                                               ▼
+                                                        Gemini 3.8 Flash
+                                                               │
+                             ┌─────────────────────────────────┴────────────────────────────────┐
+                             ▼                                                                  ▼
+                      Lecture Summary                                                    Exam Questions
+                                                                                                │
+                                                                                                ▼
+                                                                                       Validation Layer
+                                                                                                │
+                                                                                                ▼
+                                                                                       Duplicate Prevention
+                                                                                                │
+                                                                                                ▼
+                                                                                        Question Bank
+                                                                                                │
+                                                                                    ┌───────────┴───────────┐
+                                                                                    ▼                       ▼
+                                                                                Phase 10                Phase 11
+                                                                              AI Quiz System      Learning Analytics
+```
+
+### 6.2 Supported Question Types & Difficulties
+- **Question Types** (Enum: `questionType`):
+  - `MCQ`: Exactly 4 unique options with 1 matching correct answer.
+  - `TRUE_FALSE`: Options fixed to `["True", "False"]`. Correct answer is boolean string `"True"` or `"False"`.
+  - `SHORT_ANSWER`: Options array is empty `[]`. Concise, precise model answer provided.
+  - `SCENARIO`: Realistic context problem followed by question. Supports 4 multiple choice options.
+- **Difficulty Levels** (Enum: `difficulty`):
+  - `2`: Basic Understanding (core concepts, definitions, direct classifications). Level 1 is disallowed to maintain university standard.
+  - `3`: Application / Moderate (comparing concepts, determining outcomes, applying principles).
+  - `4`: Scenario / Higher-order (complex multi-step scenarios, diagnosing errors, analyzing tradeoffs).
+
+### 6.3 Grounding, Prompt Injection Defense & Deduplication
+- **Grounding Mandate**: Questions are generated strictly from the supplied lecture context. Outside knowledge and unsupported facts are forbidden.
+- **Prompt Injection Defense**: Context chunks are wrapped as untrusted reference data. System instructions explicitly command Gemini to ignore directives inside PDF content.
+- **Duplicate Prevention**: Text normalization (whitespace, punctuation, lowercase stripping) prevents within-batch duplicates and checks against active database questions.
+- **Source Attribution**: Application maps verified `chunkId`, `chunkIndex`, `documentName`, `pageStart`, `pageEnd`, and `sectionHeading` from actual source chunks.
+
+### 6.4 REST API Endpoints
+- `POST /api/questions/generate`: Generates and persists questions (`{ documentId, questionType, difficulty, count }`).
+- `GET /api/questions/document/:documentId`: Retrieves active questions for a lecture document (optional filters: `questionType`, `difficulty`, `hideAnswers`).
+- `GET /api/questions/module/:moduleId`: Retrieves active questions across an enrolled module.
+- `GET /api/questions/:questionId`: Retrieves a single question item.
+- `DELETE /api/questions/:questionId`: Admin-only question deletion.
+
+### 6.5 Cascade Cleanup
+Deleting a document or course module cascades to clean up all associated `Question` records, preventing orphaned database items.
+
+

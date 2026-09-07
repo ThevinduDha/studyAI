@@ -392,9 +392,71 @@ This document details the planned REST API routes, HTTP verbs, payload structure
   - **Description**: Deletes all generated summary records associated with the document.
   - **Response `200 OK`**: Returns `{ success: true, message: "Summary deleted successfully", data: { deletedCount: 1 } }`
 
+### 2.8 Exam-Focused Question Generator (`/api/questions`)
+- **`POST /api/questions/generate`**
+  - **Auth**: Required (`student` enrolled in module, or `admin`)
+  - **Description**: Generates exam-focused questions from lecture document chunks, validates schema, checks duplicates, and attaches source citations.
+  - **Body**:
+    ```json
+    {
+      "documentId": "65f1a2b3c4d5e6f7a8b9c0d1",
+      "questionType": "MCQ",
+      "difficulty": 3,
+      "count": 5
+    }
+    ```
+  - **Response `201 Created`**:
+    ```json
+    {
+      "success": true,
+      "data": {
+        "requested": 5,
+        "generated": 5,
+        "questions": [
+          {
+            "_id": "675000000000000000000101",
+            "module": "65f1a2b3c4d5e6f7a8b9c010",
+            "document": "65f1a2b3c4d5e6f7a8b9c0d1",
+            "questionType": "MCQ",
+            "difficulty": 3,
+            "questionText": "What is the primary role of a loss function?",
+            "options": ["A", "B", "C", "D"],
+            "correctAnswer": "A",
+            "explanation": "...",
+            "examClue": "...",
+            "commonTrap": "...",
+            "topic": "Optimization",
+            "sourceChunks": [...],
+            "generationModel": "gemini-3.8-flash",
+            "generationVersion": 1,
+            "isActive": true
+          }
+        ]
+      }
+    }
+    ```
+
+- **`GET /api/questions/document/:documentId`**
+  - **Auth**: Required (`student` enrolled in module, or `admin`)
+  - **Query Params**: `questionType`, `difficulty`, `hideAnswers=true|false`
+  - **Description**: Retrieves active questions for a document.
+
+- **`GET /api/questions/module/:moduleId`**
+  - **Auth**: Required (`student` enrolled in module, or `admin`)
+  - **Query Params**: `questionType`, `difficulty`, `hideAnswers=true|false`
+  - **Description**: Retrieves active questions across an entire module.
+
+- **`GET /api/questions/:questionId`**
+  - **Auth**: Required (`student` enrolled in module, or `admin`)
+  - **Description**: Retrieves a single question by ID.
+
+- **`DELETE /api/questions/:questionId`**
+  - **Auth**: Admin only
+  - **Description**: Deletes a question record. Returns 403 Forbidden for students.
+
 ---
 
-## 3. Planned Future Endpoints (Phase 9+)
+## 3. Planned Future Endpoints (Phase 10+)
 
 
 

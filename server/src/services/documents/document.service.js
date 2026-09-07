@@ -3,6 +3,8 @@ import Document from '../../models/document.model.js';
 import DocumentChunk from '../../models/documentChunk.model.js';
 import Module from '../../models/module.model.js';
 import User from '../../models/user.model.js';
+import Question from '../../models/question.model.js';
+import LectureSummary from '../../models/lectureSummary.model.js';
 import { processDocument } from './documentProcessing.service.js';
 import * as embeddingService from '../ai/embedding.service.js';
 
@@ -173,8 +175,10 @@ export const deleteDocument = async (id, user) => {
     }
   }
 
-  // Cascade delete associated DocumentChunks
+  // Cascade delete associated DocumentChunks, LectureSummaries, and Questions
   await DocumentChunk.deleteMany({ document: id });
+  await LectureSummary.deleteMany({ document: id });
+  await Question.deleteMany({ document: id });
 
   // Delete database record
   await Document.findByIdAndDelete(id);
