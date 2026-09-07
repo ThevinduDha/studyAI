@@ -531,6 +531,38 @@ Phase 10 implements an interactive, production-grade **Quiz System** utilizing t
   - `QuizResultPage.jsx`: Visual score banner, performance statistics, and comprehensive question-by-question review with answer keys and study source chunks.
   - `QuizHistoryPage.jsx`: Chronological student attempt logs with module/document badges, score indicators, and one-click review navigation.
 
+---
+
+## 16. Phase 11: Student Performance Analytics & Weak-Topic Intelligence Architecture
+
+### 16.1 Core Architecture & Tenets
+Phase 11 introduces a 100% deterministic, high-performance analytics layer built directly on trusted MongoDB `QuizAttempt` and `Question` records:
+- **Zero Gemini Dependency for Dashboard**: Core calculations (accuracy, question counts, difficulty breakdown, module performance, topic classifications, trend detection, and weak-topic prioritization) are computed deterministically from database records without requiring Gemini API calls.
+- **Strict Student Isolation**: Students strictly access their own attempt records and enrolled module performance; query parameter manipulation (e.g., `?studentId=...`) is ignored for non-admin accounts.
+- **Topic Data Fidelity**: Aggregates directly on reliable Phase 9 Question model `topic` metadata without synthetic regex/NLP extraction from question text.
+- **Normalized Priority Scoring**: Weak topics are ranked via:
+  $$\text{PriorityScore} = (\text{ErrorRate} \times 0.5) + (\text{NormalizedMistakes} \times 0.3) + (\text{NormalizedDifficulty} \times 0.2)$$
+  Where both $\text{NormalizedMistakes}$ and $\text{NormalizedDifficulty}$ are strictly bounded in $[0.0, 1.0]$.
+- **Zero Divide-by-Zero**: All calculations safely guard against empty states and zero divisors.
+- **Lightweight SVG Visualizations**: Performance trends are plotted via native React SVG components, eliminating bloated third-party charting libraries while supporting responsive dark mode SaaS styling.
+
+### 16.2 Key Components
+- **`analytics.service.js`** (`server/src/services/analytics/analytics.service.js`):
+  - `getStudentOverviewAnalytics()`: Computes overall totals, average scores, pacing, chronological trend, module performance, topic classification, difficulty breakdown, question type performance, weak-topic ranking, frequently missed questions, and deterministic recommendations.
+  - `getModuleAnalytics()`: Computes scoped analytics for an enrolled course module.
+  - `getTopicAnalytics()`: Computes scoped performance and missed question mappings for an individual topic.
+  - `calculateTrend()`: Multi-attempt window comparison detecting `improving`, `declining`, `stable`, or `insufficient_data`.
+  - `calculateTopicPriority()`: Transparent priority formula balancing error rate, mistake volume, and question difficulty.
+  - `generateAIStudyAdvice()`: Optional Gemini 3.8 Flash helper receiving only sanitized analytical summaries with prompt injection defense and deterministic fallback.
+- **`analytics.controller.js` & `analytics.routes.js`**:
+  - Exposes `GET /api/analytics/overview`, `GET /api/analytics/module/:moduleId`, `GET /api/analytics/topic/:topic`, and `POST /api/analytics/ai-insight`.
+- **Frontend Architecture**:
+  - `AnalyticsPage.jsx`: Responsive analytics dashboard featuring Overview KPI cards, interactive SVG trend chart, weak-topic intelligence cards with priority badges, module performance bars, difficulty & question type mastery grids, and recent quiz history.
+  - `analytics.service.js`: Frontend API client encapsulating analytics endpoints.
+- **Database Optimization**:
+  - Compound indexes on `QuizAttempt`: `{ student: 1, status: 1, submittedAt: -1 }` and `{ student: 1, module: 1, status: 1, submittedAt: -1 }`.
+
+
 
 
 

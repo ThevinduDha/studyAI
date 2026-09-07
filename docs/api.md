@@ -515,26 +515,35 @@ This document details the planned REST API routes, HTTP verbs, payload structure
 
 ---
 
-## 3. Planned Future Endpoints (Phase 11+)
+### 2.9 Student Performance Analytics & Weak-Topic Intelligence (`/api/analytics` — Phase 11 Active)
 
-### 3.5 AI & RAG (`/api/ai`)
-- **`POST /api/ai/chat`** — Submit a contextual question scoped to a module or document.
-  - **Body**: `{ "moduleId": "...", "documentId": "...", "query": "Explain Theorem 3" }`
-  - **Response**: `{ "answer": "...", "sources": [{ "documentName": "...", "pageNumber": 5 }] }`
-- **`POST /api/ai/summarize`** — Generate an executive summary or study notes for an uploaded lecture.
-- **`POST /api/ai/podcast-script`** — Generate an audio-ready conversational study dialogue script between two hosts.
+- **`GET /api/analytics/overview`**
+  - **Auth**: Required (Student receives own analytics; Admin can query `?studentId=...`)
+  - **Description**: Computes deterministic performance metrics across all completed quizzes: overall accuracy, average score, pacing, chronological trend, module mastery, topic strengths/weaknesses (`STRONG`, `AVERAGE`, `WEAK`, `INSUFFICIENT_DATA`), difficulty levels (2, 3, 4), question types, priority-ranked weak topics, and frequently missed questions (without answer keys).
+
+- **`GET /api/analytics/module/:moduleId`**
+  - **Auth**: Required (Student must be enrolled in module; Admin has global access)
+  - **Description**: Retrieves scoped performance analytics for a specific course module, including topic breakdown, difficulty mastery, and recent completed quizzes.
+
+- **`GET /api/analytics/topic/:topic`**
+  - **Auth**: Required
+  - **Description**: Retrieves scoped analytics for a specific topic, including total questions, accuracy, difficulty breakdown, and frequently missed questions.
+
+- **`POST /api/analytics/ai-insight`**
+  - **Auth**: Required
+  - **Body**: `{ "summaryData": { ... } }`
+  - **Description**: Optional strategic study advice generation powered by Gemini 3.8 Flash, grounded in the provided sanitized analytical summary with prompt injection defenses and deterministic fallback.
+
+---
+
+## 3. Planned Future Endpoints (Phase 12+)
+
+### 3.8 Study Plans (`/api/study-plans` — Phase 12)
+- **`POST /api/study-plans/generate`** — Generate an AI-recommended daily/weekly study schedule based on Phase 11 weak spots and upcoming deadlines.
+- **`GET /api/study-plans`** — Get scheduled study tasks for today or this week.
+- **`PATCH /api/study-plans/:id/tasks/:taskId`** — Mark a study task as completed.
 
 ### 3.7 Flashcards (`/api/flashcards`)
 - **`POST /api/flashcards/generate`** — Generate front/back flashcard decks from lecture chunks.
 - **`GET /api/flashcards/module/:moduleId`** — Retrieve flashcard decks for spaced repetition revision.
 - **`PATCH /api/flashcards/:id/review`** — Record review confidence (easy, medium, hard).
-
-### 3.8 Study Plans (`/api/study-plans`)
-- **`POST /api/study-plans/generate`** — Generate an AI-recommended daily/weekly study schedule based on quiz weak spots and upcoming deadlines.
-- **`GET /api/study-plans`** — Get scheduled study tasks for today or this week.
-- **`PATCH /api/study-plans/:id/tasks/:taskId`** — Mark a study task as completed.
-
-### 3.9 Progress & Analytics (`/api/progress`)
-- **`GET /api/progress/dashboard`** — Consolidated metrics: overall mastery score, study streaks, hours spent, weak topics across all modules.
-- **`GET /api/progress/module/:moduleId`** — Module-specific mastery breakdown and topic retention trends.
-- **`POST /api/progress/session`** — Log a completed study session duration.

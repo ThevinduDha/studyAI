@@ -13,6 +13,7 @@ import ExamQuestionsPage from './pages/ExamQuestionsPage.jsx';
 import QuizPage from './pages/QuizPage.jsx';
 import QuizResultPage from './pages/QuizResultPage.jsx';
 import QuizHistoryPage from './pages/QuizHistoryPage.jsx';
+import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import Phase1OverviewPage from './pages/Phase1OverviewPage.jsx';
 
 function RootRedirect() {
@@ -102,6 +103,16 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <QuizHistoryPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Protected Performance Analytics Route (Phase 11) */}
+              <Route
+                path="/analytics"
+                element={
+                  <ProtectedRoute>
+                    <AnalyticsPage />
                   </ProtectedRoute>
                 }
               />

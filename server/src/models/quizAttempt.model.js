@@ -125,10 +125,12 @@ const quizAttemptSchema = new mongoose.Schema(
   }
 );
 
-// Compound indexes for optimal retrieval & analytics
+// Compound indexes for optimal retrieval & analytics (Phase 10 & Phase 11)
 quizAttemptSchema.index({ student: 1, status: 1, createdAt: -1 });
 quizAttemptSchema.index({ quiz: 1, student: 1, status: 1 });
 quizAttemptSchema.index({ module: 1, student: 1, createdAt: -1 });
+quizAttemptSchema.index({ student: 1, status: 1, submittedAt: -1 });
+quizAttemptSchema.index({ student: 1, module: 1, status: 1, submittedAt: -1 });
 
 const QuizAttempt = mongoose.model('QuizAttempt', quizAttemptSchema);
 
