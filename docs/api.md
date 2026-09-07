@@ -133,12 +133,51 @@ This document details the planned REST API routes, HTTP verbs, payload structure
   - **Response `200 OK`**: Returns `{ success: true, data: { document: { ... } } }`
 - **`DELETE /api/documents/:id`**
   - **Auth**: `Bearer <token>` (Admin only)
-  - **Description**: Deletes document metadata from MongoDB and safely unlinks the physical PDF file from the disk.
+  - **Description**: Deletes document metadata from MongoDB, deletes all corresponding `DocumentChunk` records, and safely unlinks the physical PDF file from the disk.
   - **Response `200 OK`**: Returns `{ success: true, message: "Document '...' deleted successfully", data: { document } }`
+- **`GET /api/documents/:id/chunks`**
+  - **Auth**: `Bearer <token>` (Student or Admin — Phase 4 Active)
+  - **Query Params**:
+    - `page`: Page number (integer >= 1, default: `1`)
+    - `limit`: Chunks per page (integer 1-100, default: `20`)
+  - **Authorization Scoping**: Students can only access chunks from documents belonging to modules they are actively enrolled in (`403 Forbidden` if not enrolled). Admins have universal access across all modules.
+  - **Response `200 OK`**:
+    ```json
+    {
+      "success": true,
+      "data": {
+        "chunks": [
+          {
+            "_id": "67ce123...",
+            "document": "67cd456...",
+            "module": "67cc789...",
+            "chunkIndex": 0,
+            "text": "Distributed systems are computing environments...",
+            "characterCount": 1129,
+            "tokenCount": 187,
+            "metadata": {
+              "originalName": "cs401_lecture1.pdf",
+              "pageStart": null,
+              "pageEnd": null,
+              "sectionHeading": null,
+              "sourceType": "pdf"
+            },
+            "createdAt": "2026-09-07T22:30:00.000Z"
+          }
+        ],
+        "pagination": {
+          "total": 12,
+          "page": 1,
+          "limit": 20,
+          "totalPages": 1
+        }
+      }
+    }
+    ```
 
 ---
 
-## 3. Planned Future Endpoints (Phase 4+)
+## 3. Planned Future Endpoints (Phase 5+)
 
 ### 3.5 AI & RAG (`/api/ai`)
 - **`POST /api/ai/chat`** — Submit a contextual question scoped to a module or document.

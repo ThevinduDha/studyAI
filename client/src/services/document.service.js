@@ -44,6 +44,17 @@ export const documentService = {
   deleteDocument: async (id) => {
     const res = await api.delete(`/documents/${id}`);
     return res.data.document;
+  },
+
+  /**
+   * Get paginated document chunks (Phase 4)
+   * @param {string} id - Document ObjectId
+   * @param {number} [page=1]
+   * @param {number} [limit=20]
+   */
+  getDocumentChunks: async (id, page = 1, limit = 20) => {
+    const res = await api.get(`/documents/${id}/chunks?page=${page}&limit=${limit}`);
+    return res.data;
   }
 };
 

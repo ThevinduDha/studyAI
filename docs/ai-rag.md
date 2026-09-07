@@ -17,18 +17,21 @@ General-purpose Large Language Models (LLMs) can produce plausible-sounding but 
 ### 1.1 Incremental Roadmap & Architecture Boundaries
 
 ```
-PHASE 3 (Current Completed):
+PHASE 3 (Complete):
 PDF ──► Safe Disk Storage ──► Text Extraction (pdf-parse) ──► Saved in MongoDB
 
-PHASE 4 (Next Phase):
-Extracted Text ──► Semantic Sliding-Window Chunking (chunkDocumentText)
+PHASE 4 (Current Completed):
+Extracted Text ──► Text Normalization ──► Hierarchical Semantic Chunking ──► DocumentChunk Collection
 
-PHASE 5+ (Future Phases):
-Chunks ──► Gemini Embeddings (text-embedding-004) ──► Vector Database ──► Retrieval ──► LLM Synthesis
+PHASE 5 (Next Phase):
+Chunks ──► Gemini Embeddings (text-embedding-004) ──► Vector Database / Index
+
+PHASE 6+ (Future Phases):
+Query Vectorization ──► Semantic Retrieval ──► Grounded Prompt Construction ──► Gemini LLM Synthesis
 ```
 
 > [!IMPORTANT]
-> **Phase 3 Boundary**: This phase strictly implements the document management, secure disk upload, and PDF text extraction foundation. No embeddings, vector databases, or LLM inference calls are executed in Phase 3.
+> **Phase 4 Boundary**: Phase 4 focuses exclusively on cleaning extracted text and partitioning it into structured, overlapping chunks saved in MongoDB with rich retrieval metadata. Absolutely NO embeddings, vector databases (Atlas Vector Search, Pinecone, FAISS, Chroma), semantic similarity calculations, or LLM inference calls are implemented in Phase 4.
 
 ---
 
@@ -89,19 +92,39 @@ Chunks ──► Gemini Embeddings (text-embedding-004) ──► Vector Databas
 - **Engine**: Node.js PDF parsing library (e.g., `pdf-parse` / `pdfjs-dist`).
 - **Preservation**: The extractor reads the document sequentially and maintains a strict `pageNumber` index for every slice of text extracted.
 
-### 3.2 Text Cleaning & Normalization
-- Removes repeated running headers, slide numbers, copyright footers, and redundant line breaks.
-- Normalizes unicode characters, standardizes bullet points, and cleans whitespace while preserving sentence boundaries and paragraph structures.
+### 3.2 Text Cleaning & Normalization (`textCleaning.service.js` — Phase 4 Active)
+- **Engine**: Dedicated `normalizeExtractedText(rawText)` utility.
+- **Normalization Rules**:
+  - Removes common PDF pagination lines (e.g. `-- 1 of 12 --`, `Page 3 of 20`).
+  - Removes form feed characters (`\f`).
+  - Merges soft hyphens broken across lines (e.g. `comput-\ner` ➔ `computer`).
+  - Normalizes line breaks (`\r\n` ➔ `\n`).
+  - Collapses 3+ consecutive line breaks into standard paragraph breaks (`\n\n`), preserving intended paragraph hierarchy.
+  - Collapses multiple horizontal spaces and tabs into a single space while trimming line edges.
+  - Preserves legitimate sentence boundaries, parentheses, punctuation, and academic formatting without LLM rewriting.
 
-### 3.3 Semantic Chunking Strategy
-- **Chunk Size**: Target ~500 to 800 tokens (~2,000 to 3,200 characters).
-- **Chunk Overlap**: ~100 tokens (~400 characters) sliding overlap.
-  - *Why Overlap?* Prevents vital definitions, theorems, or contextual statements from being arbitrarily truncated across chunk boundaries.
-- **Metadata Association**: Each chunk retains:
-  - `documentId`: Link to parent document.
-  - `moduleId`: Link to university subject.
-  - `pageNumber`: The source page from which the chunk originated.
-  - `chunkIndex`: Positional order in the document.
+### 3.3 Semantic Chunking Strategy (`chunking.service.js` — Phase 4 Active)
+- **Algorithm**: Deterministic hierarchical boundary snapping:
+  1. **Paragraphs**: First splits text on double linebreaks (`\n\n+`).
+  2. **Sentences**: If a paragraph exceeds the target chunk size, splits into sentences using regex boundary matching (`(?<=[.!?])\s+(?=[A-Z0-9"'])`).
+  3. **Words**: If a single sentence exceeds the chunk size, splits by whitespace without ever splitting individual words.
+- **Configurable Parameters**:
+  - `chunkSizeWords`: Target maximum words per chunk (default: **900 words**, ~1,200 estimated tokens).
+  - `overlapWords`: Sliding window context overlap (default: **150 words**, ~200 estimated tokens).
+- **Token Estimation**: Clearly documented heuristic estimation: `tokenCount = Math.round(wordCount * 1.33)`. Avoids heavyweight tokenizers until real embedding tokenizers are introduced in Phase 5.
+- **Guarantees**:
+  - No empty or whitespace-only chunks.
+  - Zero word-splitting.
+  - Strictly sequential zero-based `chunkIndex`.
+  - Non-zero sliding overlap across multi-chunk documents.
+  - Idempotent and deterministic: same text produces identical chunks.
+- **Metadata Association**:
+  - `document`: ObjectId reference to parent `Document`.
+  - `module`: ObjectId reference to parent `Module`.
+  - `chunkIndex`: 0-based sequential ordering.
+  - `characterCount`: Exact UTF-8 character length.
+  - `tokenCount`: Estimated token count.
+  - `metadata`: `{ originalName, pageStart, pageEnd, sectionHeading, sourceType: 'pdf' }`.
 
 ### 3.4 Embedding Generation
 - **Model**: Google Gemini `text-embedding-004` (or latest stable Google embedding model).

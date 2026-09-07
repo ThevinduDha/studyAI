@@ -190,12 +190,63 @@ The core philosophy of StudyAI is **grounded intelligence**: the AI model priori
 
 ---
 
-## 8. Phase 3: Document Management & Ingestion Foundation
-
 ### 8.1 Scope & Incremental Pipeline Boundaries
-- **Phase 3 (Current)**: `PDF Upload` ──► `Text Extraction` ──► `Extracted Text & Page Count Saved in MongoDB`
-- **Phase 4 (Next)**: `Extracted Text` ──► `Semantic Sliding-Window Chunking` (`chunkDocumentText`)
-- **Phase 5+ (Future)**: `Chunks` ──► `Gemini Vector Embeddings` ──► `Vector DB` ──► `Semantic Retrieval` ──► `LLM Synthesis`
+- **Phase 3 (Complete)**: `PDF Upload` ──► `Text Extraction` ──► `Extracted Text & Page Count Saved in MongoDB`
+- **Phase 4 (Current Completed)**: `Extracted Text` ──► `Text Normalization` ──► `Semantic Sliding-Window Chunking` ──► `DocumentChunk Records in MongoDB`
+- **Phase 5 (Next Phase)**: `Chunks` ──► `Gemini Vector Embeddings (text-embedding-004)` ──► `Vector Storage / Index`
+- **Phase 6+ (Future)**: `Semantic Retrieval` ──► `Context Re-ranking` ──► `LLM Synthesis (Gemini Flash/Pro)`
+
+---
+
+## 9. Phase 4: Document Chunking Architecture & Pipeline
+
+### 9.1 Overview & Responsibilities
+Phase 4 transforms extracted plain text into clean, structured, and overlapping semantic chunks stored in a dedicated `DocumentChunk` MongoDB collection. Each chunk is independently indexed and ready for vectorization in Phase 5.
+
+Strict architectural separation of concerns is maintained:
+- **`Document` model**: Maintains document metadata, raw extracted text, processing lifecycle status, and total `chunkCount`.
+- **`DocumentChunk` model**: Houses individual chunk passages, word/token metrics, positional indexes, and provenance metadata.
+- **`textCleaning.service.js`**: Normalizes raw extracted PDF text, removing page-break markers, form feeds, accidental hyphenation, and excessive whitespace while preserving paragraph structure (`\n\n`) and sentence punctuation.
+- **`chunking.service.js`**: Splits normalized text into semantically coherent segments using a hierarchical boundary strategy (Paragraph ➔ Sentence ➔ Word), strictly respecting configured chunk size and sliding overlap without splitting words.
+- **`documentProcessing.service.js`**: Orchestrates the asynchronous pipeline: `Extraction` ──► `Cleaning` ──► `Chunking` ──► `Atomic Chunk Insertion` ──► `Document Status Update`.
+- **`document.controller.js` & `document.routes.js`**: Exposes paginated chunk inspection via `GET /api/documents/:id/chunks`.
+
+### 9.2 End-to-End Ingestion & Chunking Pipeline
+```
+[POST /api/documents] (Admin)
+         │
+         ▼
+[Multer Upload Handler] ──► Store file in server/uploads/documents/, create Document (status: "uploaded")
+         │
+         ▼ (Asynchronous background setImmediate)
+[Document Processing Service] ──► Status: "processing"
+         │
+         ▼
+[PDF Text Extractor (pdf-parse)] ──► Extract raw text and total pageCount
+         │
+         ▼
+[Text Cleaning Service] ──► Remove page artifacts, clean whitespace, normalize linebreaks
+         │
+         ▼
+[Chunking Service] ──► Split by Paragraph/Sentence/Word boundaries into sliding chunks
+         │              Default: ~900 words (~1200 est. tokens), ~150 words (~200 est. tokens) overlap
+         │
+         ▼
+[Reprocessing Cleanup] ──► Delete any existing DocumentChunk records for this document
+         │
+         ▼
+[Bulk Insert Chunks] ──► Insert DocumentChunk records into MongoDB
+         │
+         ▼
+[Finalize Document] ──► Status: "processed", chunkCount: N, extractedText: cleanedText
+```
+
+### 9.3 Reprocessing Safety & Cascade Lifecycle
+1. **Idempotent Reprocessing**: Before inserting new chunks during re-processing, `DocumentChunk.deleteMany({ document: document._id })` is executed. A compound unique index on `{ document: 1, chunkIndex: 1 }` guarantees that no duplicate chunk indexes can exist.
+2. **Failure Isolation**: If text extraction or chunking encounters an error, any partially generated chunks are wiped and the document status transitions to `"failed"`.
+3. **Cascade Deletion**:
+   - Deleting a document (`DELETE /api/documents/:id`) safely removes all associated `DocumentChunk` records from MongoDB, in addition to unlinking the physical PDF from disk.
+   - Deleting a module (`DELETE /api/modules/:id`) cascades across all associated documents and their corresponding `DocumentChunk` records.
 
 ### 8.2 Safe Storage & Multer Upload Strategy
 - **Path Isolation**: Files are stored strictly outside the source tree in `server/uploads/documents/`.

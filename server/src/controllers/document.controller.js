@@ -111,3 +111,26 @@ export const deleteDocument = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * @route   GET /api/documents/:id/chunks
+ * @desc    Get paginated chunks for a document
+ * @access  Private (Admin or Enrolled Student)
+ */
+export const getDocumentChunks = async (req, res, next) => {
+  try {
+    const { page, limit } = req.query;
+    const result = await documentService.getDocumentChunks(req.params.id, {
+      page,
+      limit,
+      user: req.user
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};

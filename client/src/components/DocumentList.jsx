@@ -8,7 +8,10 @@ import {
   Trash2,
   Eye,
   RefreshCw,
-  X
+  X,
+  Layers,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import documentService from '../services/document.service.js';
 
@@ -35,6 +38,25 @@ export default function DocumentList({
   const [fetchingDetails, setFetchingDetails] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [actionError, setActionError] = useState(null);
+
+  // Chunk inspection states (Phase 4)
+  const [inspectingChunksDoc, setInspectingChunksDoc] = useState(null);
+  const [chunksData, setChunksData] = useState({ chunks: [], pagination: { page: 1, totalPages: 1, total: 0 } });
+  const [loadingChunks, setLoadingChunks] = useState(false);
+
+  const handleViewChunks = async (doc, page = 1) => {
+    setActionError(null);
+    setLoadingChunks(true);
+    setInspectingChunksDoc(doc);
+    try {
+      const data = await documentService.getDocumentChunks(doc._id, page, 5);
+      setChunksData(data);
+    } catch (err) {
+      setActionError(err.message || 'Failed to load document chunks');
+    } finally {
+      setLoadingChunks(false);
+    }
+  };
 
   const handleViewText = async (doc) => {
     setActionError(null);
@@ -167,6 +189,9 @@ export default function DocumentList({
                     <div className="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
                       <span>{formatFileSize(doc.fileSize)}</span>
                       {doc.pageCount > 0 && <span>&bull; {doc.pageCount} pages</span>}
+                      {doc.chunkCount !== undefined && doc.chunkCount > 0 && (
+                        <span className="text-indigo-400 font-medium">&bull; {doc.chunkCount} chunks</span>
+                      )}
                       <span>&bull; Uploaded {new Date(doc.createdAt).toLocaleDateString()}</span>
                       {doc.module?.moduleCode && (
                         <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-300">
@@ -192,6 +217,17 @@ export default function DocumentList({
                     >
                       <Eye className="h-3.5 w-3.5 text-indigo-400" />
                       <span>Extracted Text</span>
+                    </button>
+                  )}
+
+                  {doc.status === 'processed' && canDelete && (
+                    <button
+                      onClick={() => handleViewChunks(doc, 1)}
+                      className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-md bg-indigo-950/60 hover:bg-indigo-900/80 text-indigo-300 border border-indigo-800/60 transition cursor-pointer"
+                      title="Inspect structured document chunks (Phase 4)"
+                    >
+                      <Layers className="h-3.5 w-3.5 text-indigo-400" />
+                      <span>Chunks {doc.chunkCount !== undefined ? `(${doc.chunkCount})` : ''}</span>
                     </button>
                   )}
 
@@ -256,6 +292,102 @@ export default function DocumentList({
               >
                 Close Preview
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Structured Chunks Modal (Phase 4) */}
+      {inspectingChunksDoc && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="max-w-3xl w-full max-h-[90vh] rounded-2xl border border-slate-800 bg-[#0c1222] p-6 shadow-2xl flex flex-col relative">
+            <button
+              onClick={() => setInspectingChunksDoc(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-md bg-slate-800 cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="mb-4 pb-3 border-b border-slate-800/80">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
+                  <Layers className="h-3 w-3" />
+                  Phase 4 Chunks
+                </span>
+                <span className="text-xs text-slate-400">
+                  Total: {chunksData.pagination?.total || 0} chunks &bull; Default target: ~900 words &bull; ~150 words overlap
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-white truncate max-w-xl">
+                {inspectingChunksDoc.originalName}
+              </h3>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+              {loadingChunks ? (
+                <div className="py-16 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+                  <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+                  <span className="text-xs">Loading document chunks...</span>
+                </div>
+              ) : (chunksData.chunks || []).length === 0 ? (
+                <div className="py-12 text-center text-slate-500 text-xs">
+                  No chunks generated for this document yet.
+                </div>
+              ) : (
+                chunksData.chunks.map((chunk) => (
+                  <div
+                    key={chunk._id}
+                    className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 hover:border-slate-700 transition"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-800/60">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">
+                          Chunk #{chunk.chunkIndex}
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          {chunk.characterCount} chars &bull; ~{chunk.tokenCount} tokens (est)
+                        </span>
+                      </div>
+                      <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
+                        {chunk.metadata?.sourceType || 'pdf'}
+                      </span>
+                    </div>
+                    <p className="font-mono text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">
+                      {chunk.text}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-800/80 mt-4 text-xs">
+              <span className="text-slate-400 text-[11px]">
+                Page {chunksData.pagination?.page || 1} of {chunksData.pagination?.totalPages || 1} (
+                {chunksData.pagination?.total || 0} total chunks)
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={loadingChunks || (chunksData.pagination?.page || 1) <= 1}
+                  onClick={() => handleViewChunks(inspectingChunksDoc, (chunksData.pagination?.page || 1) - 1)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <span>Previous</span>
+                </button>
+                <button
+                  disabled={
+                    loadingChunks ||
+                    (chunksData.pagination?.page || 1) >= (chunksData.pagination?.totalPages || 1)
+                  }
+                  onClick={() => handleViewChunks(inspectingChunksDoc, (chunksData.pagination?.page || 1) + 1)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

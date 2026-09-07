@@ -3,7 +3,8 @@ import {
   upload,
   getDocuments,
   getDocument,
-  deleteDocument
+  deleteDocument,
+  getDocumentChunks
 } from '../controllers/document.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/role.middleware.js';
@@ -23,6 +24,9 @@ router.get('/', getDocuments);
 
 // Single document details & processing status
 router.get('/:id', validateObjectId('id'), getDocument);
+
+// Retrieve document chunks (paginated, scoped by enrollment / role)
+router.get('/:id/chunks', validateObjectId('id'), getDocumentChunks);
 
 // Delete document (Admin only)
 router.delete('/:id', validateObjectId('id'), requireRole('admin'), deleteDocument);

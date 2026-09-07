@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import Document from '../../models/document.model.js';
+import DocumentChunk from '../../models/documentChunk.model.js';
 import Module from '../../models/module.model.js';
 import User from '../../models/user.model.js';
 import { processDocument } from './documentProcessing.service.js';
@@ -171,15 +172,71 @@ export const deleteDocument = async (id, user) => {
     }
   }
 
+  // Cascade delete associated DocumentChunks
+  await DocumentChunk.deleteMany({ document: id });
+
   // Delete database record
   await Document.findByIdAndDelete(id);
 
   return document;
 };
 
+/**
+ * Retrieves paginated chunks for a document with enrollment authorization
+ *
+ * @param {string} documentId - MongoDB ObjectId of document
+ * @param {Object} options - { page = 1, limit = 20, user }
+ * @returns {Promise<{ chunks: Array, pagination: Object }>}
+ */
+export const getDocumentChunks = async (documentId, { page = 1, limit = 20, user }) => {
+  const document = await Document.findById(documentId);
+  if (!document) {
+    const error = new Error('Document not found');
+    error.code = 'DOCUMENT_NOT_FOUND';
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Authorization check for students
+  if (user.role === 'student') {
+    const isEnrolled = (user.enrolledModules || []).some(
+      (modId) => modId.toString() === document.module.toString()
+    );
+    if (!isEnrolled) {
+      const error = new Error('Access denied: You are not enrolled in the module this document belongs to');
+      error.code = 'FORBIDDEN';
+      error.statusCode = 403;
+      throw error;
+    }
+  }
+
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+  const skip = (pageNum - 1) * limitNum;
+
+  const [chunks, total] = await Promise.all([
+    DocumentChunk.find({ document: documentId })
+      .sort({ chunkIndex: 1 })
+      .skip(skip)
+      .limit(limitNum),
+    DocumentChunk.countDocuments({ document: documentId })
+  ]);
+
+  return {
+    chunks,
+    pagination: {
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum) || 1
+    }
+  };
+};
+
 export default {
   createDocument,
   getDocuments,
   getDocumentById,
-  deleteDocument
+  deleteDocument,
+  getDocumentChunks
 };

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import Module from '../models/module.model.js';
 import User from '../models/user.model.js';
 import Document from '../models/document.model.js';
+import DocumentChunk from '../models/documentChunk.model.js';
 
 
 /**
@@ -147,6 +148,7 @@ export const deleteModule = async (moduleId) => {
         await fs.unlink(doc.filePath).catch(() => {});
       }
     }
+    await DocumentChunk.deleteMany({ module: moduleId });
     await Document.deleteMany({ module: moduleId });
   } catch (docErr) {
     console.warn(`[StudyAI Ingestion] Notice: Error cleaning up documents for module ${moduleId}:`, docErr.message);
