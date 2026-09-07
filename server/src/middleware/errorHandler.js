@@ -47,8 +47,12 @@ export const errorHandler = (err, req, res, next) => {
     error: {
       code: errorCode,
       message,
+      ...(err.available !== undefined ? { available: err.available } : {}),
+      ...(err.requested !== undefined ? { requested: err.requested } : {}),
+      ...(err.details !== undefined ? { details: err.details } : {}),
       ...(isProduction ? {} : { stack: err.stack })
     }
   });
 };
+
 

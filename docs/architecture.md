@@ -501,5 +501,36 @@ Phase 9 adds an academic **Exam-Focused Question Generator** built directly on t
   - Verified source attribution chips linking to lecture chunks and page numbers.
   - Admin single-click question deletion.
 
+---
+
+## 15. Phase 10: AI Quiz System Architecture
+
+### 15.1 Core Architecture & Tenets
+Phase 10 implements an interactive, production-grade **Quiz System** utilizing the existing validated **Question Bank** generated in Phase 9:
+- **Zero Client Trust**: Answers, explanations, exam clues, and traps are stripped from all active quiz payloads via `toQuizQuestion()`.
+- **No Redundant AI Calls**: Quizzes sample existing MongoDB Question records; no Gemini API calls are made during normal quiz flows.
+- **Server-Side Scoring**: The backend evaluates answers, calculates percentage scores, elapsed time, and completion status. Client-supplied scores, correctness flags, or elapsed times are strictly discarded.
+- **Phase 11 Analytics Readiness**: Attempts persist granular per-question answers, correctness, timing, and question relations for mastery trend tracking.
+
+### 15.2 Key Components
+- **`Quiz` Model** (`server/src/models/quiz.model.js`):
+  - Configuration container holding module, optional document, creator, question references, type, difficulty, time limit, and status.
+- **`QuizAttempt` Model** (`server/src/models/quizAttempt.model.js`):
+  - Active session and historical record holding student ID, quiz ID, module, document, startedAt, submittedAt, status (`in_progress`, `completed`, `abandoned`), total/answered/correct/incorrect questions, score, percentage, timeSpentSeconds, and per-answer records.
+- **`quiz.service.js`** (`server/src/services/quiz/quiz.service.js`):
+  - `toQuizQuestion()`: Serializer omitting answer keys and explanations.
+  - `createQuiz()`: Validates inputs and module enrollment, samples Question Bank items, creates Quiz record.
+  - `startQuizAttempt()`: Creates or resumes active in-progress attempt to prevent duplicate sessions.
+  - `submitQuizAttempt()`: Server-side evaluation, score/percentage calculation, elapsed time derivation, and review payload construction.
+  - `abandonQuizAttempt()`: Sets status to `abandoned` and aborts active session.
+  - `getQuizAttemptHistory()` & `getQuizAttemptById()`: Authorized retrieval of student attempts.
+- **`quiz.controller.js` & `quiz.routes.js`**:
+  - Exposes `/api/quizzes`, `/api/quizzes/:quizId`, `/api/quizzes/:quizId/start`, `/api/quizzes/attempts/:attemptId/submit`, `/api/quizzes/attempts`, `/api/quizzes/attempts/:attemptId`, `/api/quizzes/attempts/:attemptId/abandon`, and `DELETE /api/quizzes/:quizId`.
+- **Frontend Architecture**:
+  - `QuizPage.jsx`: Dynamic configuration form and active quiz view with timer, radio options, question palette, and submit confirmation modal.
+  - `QuizResultPage.jsx`: Visual score banner, performance statistics, and comprehensive question-by-question review with answer keys and study source chunks.
+  - `QuizHistoryPage.jsx`: Chronological student attempt logs with module/document badges, score indicators, and one-click review navigation.
+
+
 
 

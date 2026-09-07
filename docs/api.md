@@ -456,9 +456,66 @@ This document details the planned REST API routes, HTTP verbs, payload structure
 
 ---
 
-## 3. Planned Future Endpoints (Phase 10+)
+### 2.8 AI Quizzes & Attempts (`/api/quizzes` — Phase 10 Active)
 
+- **`POST /api/quizzes`**
+  - **Auth**: Required (`student` enrolled in module, or `admin`)
+  - **Body**:
+    ```json
+    {
+      "moduleId": "6a9f07a74abd88ccd0eaf471",
+      "documentId": "6a9f07a74abd88ccd0eaf472",
+      "questionType": "ALL",
+      "difficulty": "ALL",
+      "count": 10,
+      "randomized": true,
+      "timeLimitSeconds": 600
+    }
+    ```
+  - **Description**: Samples existing Question Bank records from MongoDB and creates a Quiz. Fails with 400 `INSUFFICIENT_QUESTIONS` if fewer questions exist.
+  - **Response `201 Created`**: Returns quiz metadata and sanitized question payload (`correctAnswer`, `explanation`, etc. are omitted).
 
+- **`GET /api/quizzes/:quizId`**
+  - **Auth**: Required (`student` enrolled in module, or `admin`)
+  - **Description**: Retrieves quiz metadata and secure question payload.
+
+- **`POST /api/quizzes/:quizId/start`**
+  - **Auth**: Required (`student` enrolled in module, or `admin`)
+  - **Description**: Starts an attempt or resumes an existing `in_progress` attempt to avoid duplicate sessions.
+  - **Response `201 Created` / `200 OK`**: Returns `{ attempt, quiz, questions }` with answers masked.
+
+- **`POST /api/quizzes/attempts/:attemptId/submit`**
+  - **Auth**: Required (`student` owner)
+  - **Body**:
+    ```json
+    {
+      "answers": [
+        { "questionId": "6a9f...", "selectedAnswer": "Optimal substructure" }
+      ]
+    }
+    ```
+  - **Description**: Server grades answers against stored Question records, computes accuracy, elapsed time, updates attempt to `completed`, and reveals full question review with answers and explanations.
+
+- **`GET /api/quizzes/attempts`**
+  - **Auth**: Required (Student receives own history; Admin inspects globally)
+  - **Query Params**: `moduleId`, `documentId`, `status`
+  - **Description**: Returns chronological list of quiz attempts.
+
+- **`GET /api/quizzes/attempts/:attemptId`**
+  - **Auth**: Required (Student owner or Admin)
+  - **Description**: Retrieves single attempt. Returns masked questions while `in_progress`; reveals complete review once `completed`.
+
+- **`POST /api/quizzes/attempts/:attemptId/abandon`**
+  - **Auth**: Required (Student owner)
+  - **Description**: Abandons an active `in_progress` quiz attempt.
+
+- **`DELETE /api/quizzes/:quizId`**
+  - **Auth**: Admin only
+  - **Description**: Deletes a quiz and cleans associated in-progress attempts.
+
+---
+
+## 3. Planned Future Endpoints (Phase 11+)
 
 ### 3.5 AI & RAG (`/api/ai`)
 - **`POST /api/ai/chat`** — Submit a contextual question scoped to a module or document.
@@ -466,12 +523,6 @@ This document details the planned REST API routes, HTTP verbs, payload structure
   - **Response**: `{ "answer": "...", "sources": [{ "documentName": "...", "pageNumber": 5 }] }`
 - **`POST /api/ai/summarize`** — Generate an executive summary or study notes for an uploaded lecture.
 - **`POST /api/ai/podcast-script`** — Generate an audio-ready conversational study dialogue script between two hosts.
-
-### 3.6 Quizzes (`/api/quizzes`)
-- **`POST /api/quizzes/generate`** — Generate AI MCQs from a document or module with specified difficulty.
-- **`GET /api/quizzes/module/:moduleId`** — Retrieve practice questions for a module.
-- **`POST /api/quizzes/submit`** — Submit an attempt (`moduleId`, answers array); returns score, answer explanations, and weak-area diagnosis.
-- **`GET /api/quizzes/history`** — Retrieve past quiz attempts and historical scores.
 
 ### 3.7 Flashcards (`/api/flashcards`)
 - **`POST /api/flashcards/generate`** — Generate front/back flashcard decks from lecture chunks.

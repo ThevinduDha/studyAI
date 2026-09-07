@@ -5,6 +5,8 @@ import Module from '../../models/module.model.js';
 import User from '../../models/user.model.js';
 import Question from '../../models/question.model.js';
 import LectureSummary from '../../models/lectureSummary.model.js';
+import Quiz from '../../models/quiz.model.js';
+import QuizAttempt from '../../models/quizAttempt.model.js';
 import { processDocument } from './documentProcessing.service.js';
 import * as embeddingService from '../ai/embedding.service.js';
 
@@ -175,10 +177,12 @@ export const deleteDocument = async (id, user) => {
     }
   }
 
-  // Cascade delete associated DocumentChunks, LectureSummaries, and Questions
+  // Cascade delete associated DocumentChunks, LectureSummaries, Questions, and Quizzes
   await DocumentChunk.deleteMany({ document: id });
   await LectureSummary.deleteMany({ document: id });
   await Question.deleteMany({ document: id });
+  await Quiz.deleteMany({ document: id });
+  await QuizAttempt.deleteMany({ document: id, status: 'in_progress' });
 
   // Delete database record
   await Document.findByIdAndDelete(id);
