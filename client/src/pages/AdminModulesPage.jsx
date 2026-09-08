@@ -475,6 +475,8 @@ export default function AdminModulesPage() {
                 onRefresh={handleRefreshActiveDocs}
                 onDelete={handleDocDeleted}
                 canDelete={true}
+                moduleCode={activeDocModule?.moduleCode}
+                moduleName={activeDocModule?.moduleName}
               />
             </div>
           </div>

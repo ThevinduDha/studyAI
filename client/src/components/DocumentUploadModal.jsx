@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
-import { UploadCloud, FileText, AlertCircle, Loader2, X } from 'lucide-react';
+import { useState } from 'react';
+import { UploadCloud, FileText, AlertCircle, Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
 import documentService from '../services/document.service.js';
 import { Modal } from './ui/Modal.jsx';
 import { Button } from './ui/Button.jsx';
 import { Badge } from './ui/Badge.jsx';
+import { DocumentUploadDropzone } from './documents/DocumentUploadDropzone.jsx';
 
 export default function DocumentUploadModal({
   isOpen,
@@ -17,53 +18,18 @@ export default function DocumentUploadModal({
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef(null);
 
   if (!isOpen) return null;
 
-  const validateAndSetFile = (selectedFile) => {
-    setError(null);
-    if (!selectedFile) return;
-
-    if (selectedFile.type !== 'application/pdf' && !selectedFile.name.toLowerCase().endsWith('.pdf')) {
-      setError('Only PDF files are supported for course document ingestion.');
-      setFile(null);
-      return;
-    }
-
-    if (selectedFile.size > 25 * 1024 * 1024) {
-      setError('File size exceeds the 25MB maximum limit.');
-      setFile(null);
-      return;
-    }
-
+  const handleFileSelect = (selectedFile, validationError) => {
+    setError(validationError || null);
     setFile(selectedFile);
-  };
-
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      validateAndSetFile(e.dataTransfer.files[0]);
-    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file) {
-      setError('Please select a PDF file to upload.');
+      setError('Please select a lecture PDF file to upload.');
       return;
     }
 
@@ -77,7 +43,7 @@ export default function DocumentUploadModal({
       }
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to upload document');
+      setError(err.message || 'Failed to upload and ingest document');
     } finally {
       setUploading(false);
     }
@@ -87,80 +53,16 @@ export default function DocumentUploadModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Upload Academic Course PDF"
-      maxWidth="max-w-md"
-    >
-      <div className="space-y-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            {moduleCode && (
-              <Badge variant="indigo" size="xs">
-                {moduleCode}
-              </Badge>
-            )}
-            <span className="text-xs text-muted truncate">{moduleName}</span>
-          </div>
-          <p className="text-xs text-muted leading-relaxed">
-            Upload syllabus readings or lecture slides. The server will extract clean text and prepare metadata for the study engine.
-          </p>
-        </div>
+      title="Upload Course Lecture Material"
+      description={`Ingest academic literature into ${moduleCode || 'Course Module'}`}
+      maxWidth="max-w-lg"
+      footer={
+        <div className="flex items-center justify-between w-full">
+          <span className="text-muted text-[11px]">
+            {uploading ? 'Extracting text and chunking...' : 'PDF only &bull; Max 25MB'}
+          </span>
 
-        {error && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-500 text-xs flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,application/pdf"
-            onChange={(e) => validateAndSetFile(e.target.files[0])}
-            className="hidden"
-          />
-
-          <div
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 ${
-              dragActive
-                ? 'border-indigo-500 bg-indigo-500/10'
-                : file
-                ? 'border-emerald-500/60 bg-emerald-500/10'
-                : 'border-subtle hover:border-indigo-500/50 bg-subtle/40'
-            }`}
-          >
-            {file ? (
-              <>
-                <div className="p-3 rounded-2xl bg-emerald-500/15 text-emerald-500">
-                  <FileText className="h-6 w-6" />
-                </div>
-                <div className="text-xs font-semibold text-heading truncate max-w-xs">{file.name}</div>
-                <div className="text-[11px] text-muted">
-                  {(file.size / (1024 * 1024)).toFixed(2)} MB &bull; Click or drop another to change
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="p-3 rounded-2xl bg-subtle text-muted">
-                  <UploadCloud className="h-6 w-6" />
-                </div>
-                <div className="text-xs font-medium text-heading">
-                  Click to select or drag &amp; drop PDF
-                </div>
-                <div className="text-[11px] text-muted">
-                  PDF format only &bull; Up to 25MB
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-subtle">
+          <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -172,14 +74,64 @@ export default function DocumentUploadModal({
             </Button>
             <Button
               type="submit"
+              form="document-upload-form"
               variant="primary"
               size="sm"
-              icon={UploadCloud}
+              icon={uploading ? Loader2 : UploadCloud}
               disabled={!file || uploading}
               loading={uploading}
             >
-              {uploading ? 'Uploading PDF...' : 'Upload & Ingest'}
+              {uploading ? 'Ingesting PDF...' : 'Upload & Process'}
             </Button>
+          </div>
+        </div>
+      }
+    >
+      <div className="space-y-4 animate-fade-in">
+        <div className="p-3 rounded-xl bg-subtle/40 border border-subtle flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            {moduleCode && (
+              <Badge variant="indigo" size="xs">
+                {moduleCode}
+              </Badge>
+            )}
+            <span className="font-semibold text-heading truncate max-w-xs">{moduleName}</span>
+          </div>
+          <span className="text-[11px] text-muted shrink-0">Academic Ingestion</span>
+        </div>
+
+        <form id="document-upload-form" onSubmit={handleSubmit} className="space-y-4">
+          <DocumentUploadDropzone
+            file={file}
+            onFileSelect={handleFileSelect}
+            disabled={uploading}
+            error={error}
+            maxSizeMB={25}
+          />
+
+          {/* Processing Pipeline Flow */}
+          <div className="p-4 rounded-2xl card-base border border-subtle bg-subtle/20 space-y-2">
+            <span className="text-[11px] uppercase font-bold tracking-wider text-muted block">
+              Automated RAG Ingestion Pipeline:
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-muted">
+              <div className="p-2 rounded-lg card-base border border-subtle text-center">
+                <span className="font-bold text-heading block">1. Extraction</span>
+                <span>Clean text parsing</span>
+              </div>
+              <div className="p-2 rounded-lg card-base border border-subtle text-center">
+                <span className="font-bold text-heading block">2. Chunking</span>
+                <span>Structured sections</span>
+              </div>
+              <div className="p-2 rounded-lg card-base border border-subtle text-center">
+                <span className="font-bold text-heading block">3. Vectors</span>
+                <span>768d Embeddings</span>
+              </div>
+              <div className="p-2 rounded-lg card-base border border-subtle text-center">
+                <span className="font-bold text-heading block">4. Study Ready</span>
+                <span>RAG, Quiz &amp; Summary</span>
+              </div>
+            </div>
           </div>
         </form>
       </div>

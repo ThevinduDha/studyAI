@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   HelpCircle,
   Sparkles,
@@ -39,12 +40,17 @@ import { GroundedBadge, SourceCard } from '../components/ai/index.js';
 
 export default function ExamQuestionsPage() {
   const { user, isAdmin } = useAuth();
+  const [searchParams] = useSearchParams();
 
   // Selection states
   const [modules, setModules] = useState([]);
-  const [selectedModule, setSelectedModule] = useState('');
+  const [selectedModule, setSelectedModule] = useState(
+    searchParams.get('module') || searchParams.get('moduleId') || ''
+  );
   const [documents, setDocuments] = useState([]);
-  const [selectedDocument, setSelectedDocument] = useState('');
+  const [selectedDocument, setSelectedDocument] = useState(
+    searchParams.get('document') || searchParams.get('documentId') || ''
+  );
 
   // Generation options
   const [genType, setGenType] = useState('MCQ');
@@ -111,7 +117,10 @@ export default function ExamQuestionsPage() {
       try {
         const docs = await documentService.getDocuments(selectedModule);
         setDocuments(docs || []);
-        if (docs && docs.length > 0) {
+        const paramDoc = searchParams.get('document') || searchParams.get('documentId');
+        if (paramDoc && docs && docs.some((d) => d._id === paramDoc)) {
+          setSelectedDocument(paramDoc);
+        } else if (docs && docs.length > 0) {
           setSelectedDocument(docs[0]._id);
         } else {
           setSelectedDocument('');
@@ -124,7 +133,7 @@ export default function ExamQuestionsPage() {
     };
 
     fetchDocuments();
-  }, [selectedModule]);
+  }, [selectedModule, searchParams]);
 
   // 3. Fetch existing questions when document changes
   useEffect(() => {

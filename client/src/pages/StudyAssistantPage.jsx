@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Sparkles,
   Send,
@@ -36,12 +37,17 @@ import {
 
 export default function StudyAssistantPage() {
   const { user, isAdmin } = useAuth();
+  const [searchParams] = useSearchParams();
 
-  const [question, setQuestion] = useState('');
+  const [question, setQuestion] = useState(searchParams.get('q') || '');
   const [modules, setModules] = useState([]);
-  const [selectedModule, setSelectedModule] = useState('');
+  const [selectedModule, setSelectedModule] = useState(
+    searchParams.get('module') || searchParams.get('moduleId') || ''
+  );
   const [documents, setDocuments] = useState([]);
-  const [selectedDocument, setSelectedDocument] = useState('');
+  const [selectedDocument, setSelectedDocument] = useState(
+    searchParams.get('document') || searchParams.get('documentId') || ''
+  );
 
   const [conversation, setConversation] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -96,6 +102,10 @@ export default function StudyAssistantPage() {
       try {
         const docs = await documentService.getDocuments(selectedModule);
         setDocuments(docs || []);
+        const paramDoc = searchParams.get('document') || searchParams.get('documentId');
+        if (paramDoc && docs && docs.some((d) => d._id === paramDoc)) {
+          setSelectedDocument(paramDoc);
+        }
       } catch (err) {
         console.error('Failed to load module documents:', err);
       } finally {
@@ -104,7 +114,7 @@ export default function StudyAssistantPage() {
     };
 
     fetchDocuments();
-  }, [selectedModule]);
+  }, [selectedModule, searchParams]);
 
   // Submit question to grounded RAG backend
   const handleSubmit = async (queryText = null) => {

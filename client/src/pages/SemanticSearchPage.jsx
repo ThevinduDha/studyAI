@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Search,
   BookOpen,
@@ -10,7 +11,10 @@ import {
   Sparkles,
   Info,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Loader2,
+  HelpCircle,
+  Lightbulb
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { moduleService } from '../services/module.service.js';
@@ -22,15 +26,28 @@ import { Badge } from '../components/ui/Badge.jsx';
 import { Card } from '../components/ui/Card.jsx';
 import { Select } from '../components/ui/Select.jsx';
 import { EmptyState } from '../components/ui/EmptyState.jsx';
+import { SearchResultCard } from '../components/search/index.js';
+
+const SUGGESTED_QUERIES = [
+  'Supervised vs unsupervised learning algorithms',
+  'Cache coherence and memory hierarchy',
+  'Dijkstra algorithm time complexity',
+  'Database normalization and third normal form'
+];
 
 export default function SemanticSearchPage() {
   const { user, isAdmin } = useAuth();
+  const [searchParams] = useSearchParams();
 
-  const [question, setQuestion] = useState('');
+  const [question, setQuestion] = useState(searchParams.get('q') || '');
   const [modules, setModules] = useState([]);
-  const [selectedModule, setSelectedModule] = useState('');
+  const [selectedModule, setSelectedModule] = useState(
+    searchParams.get('module') || searchParams.get('moduleId') || ''
+  );
   const [documents, setDocuments] = useState([]);
-  const [selectedDocument, setSelectedDocument] = useState('');
+  const [selectedDocument, setSelectedDocument] = useState(
+    searchParams.get('document') || searchParams.get('documentId') || ''
+  );
   const [topK, setTopK] = useState(5);
 
   const [loading, setLoading] = useState(false);
@@ -75,6 +92,11 @@ export default function SemanticSearchPage() {
       try {
         const docs = await documentService.getDocuments(selectedModule);
         setDocuments(docs || []);
+        // If searchParams had a document that belongs to this module, keep it
+        const paramDoc = searchParams.get('document') || searchParams.get('documentId');
+        if (paramDoc && docs.some((d) => d._id === paramDoc)) {
+          setSelectedDocument(paramDoc);
+        }
       } catch (err) {
         console.error('Failed to load documents for module:', err);
       } finally {
@@ -83,12 +105,20 @@ export default function SemanticSearchPage() {
     };
 
     fetchDocuments();
-  }, [selectedModule]);
+  }, [selectedModule, searchParams]);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!question.trim()) {
-      setError('Please enter a question or search query.');
+  // Auto-search if q is provided in URL
+  useEffect(() => {
+    const queryFromUrl = searchParams.get('q');
+    if (queryFromUrl && !searchResponse && !loading) {
+      executeSearch(queryFromUrl);
+    }
+  }, [searchParams]);
+
+  const executeSearch = async (queryString) => {
+    const textToSearch = queryString || question;
+    if (!textToSearch.trim()) {
+      setError('Please enter an academic concept or question to search.');
       return;
     }
 
@@ -98,7 +128,7 @@ export default function SemanticSearchPage() {
 
     try {
       const response = await searchRetrieval({
-        question: question.trim(),
+        question: textToSearch.trim(),
         moduleId: selectedModule || undefined,
         documentId: selectedDocument || undefined,
         topK
@@ -106,46 +136,56 @@ export default function SemanticSearchPage() {
 
       setSearchResponse(response);
     } catch (err) {
-      setError(err.message || 'Retrieval failed. Please try again.');
+      setError(err.message || 'Semantic search failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSearch = (e) => {
+    e.preventDefault();
+    executeSearch();
+  };
+
+  const handleApplySuggestion = (suggested) => {
+    setQuestion(suggested);
+    executeSearch(suggested);
+  };
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
+    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-16">
       {/* Header */}
       <PageHeader
-        badge="Phase 6 Retrieval"
+        badge="Dense Vector Retrieval"
         badgeVariant="indigo"
-        title="Knowledge Search"
+        title="Search Your Lecture Knowledge"
         icon={Search}
-        subtitle="Perform dense vector semantic retrieval on course lecture chunks using 768-dimensional Gemini embeddings and MongoDB Atlas Vector Search."
+        subtitle="Find academic concepts across your course literature using 768-dimensional Gemini embeddings and MongoDB Atlas Vector Search."
       />
 
-      {/* Scope Notice */}
+      {/* Scope Notice for students without enrollments */}
       {!isAdmin && modules.length === 0 && !loadingModules && (
-        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-500 text-sm flex items-start gap-3">
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs flex items-start gap-3 animate-fade-in">
           <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium">No Enrolled Modules</p>
-            <p className="text-xs opacity-90 mt-0.5">
-              You are not enrolled in any modules yet. As a student, semantic retrieval is strictly scoped to your enrolled courses. Please visit Course Modules and enroll in a course to search its materials.
+          <div className="space-y-1">
+            <p className="font-bold text-heading">No Enrolled Courses Found</p>
+            <p className="leading-relaxed">
+              As a student, semantic retrieval is strictly scoped to your enrolled courses. Please visit the Course Library to enroll in courses and access their searchable literature.
             </p>
           </div>
         </div>
       )}
 
       {/* Search Input Card */}
-      <Card className="p-6 shadow-md">
-        <form onSubmit={handleSearch} className="space-y-6">
-          {/* Question Textarea */}
+      <Card className="p-6 shadow-xs border border-subtle">
+        <form onSubmit={handleSearch} className="space-y-5">
+          {/* Query Input */}
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label htmlFor="search-question" className="block text-sm font-medium text-heading">
-                Search Question or Academic Concept
+              <label htmlFor="search-question" className="block text-xs font-bold uppercase tracking-wider text-heading">
+                Academic Query or Question
               </label>
-              <span className={`text-xs ${question.length > 1900 ? 'text-amber-500' : 'text-muted'}`}>
+              <span className={`text-[11px] ${question.length > 1900 ? 'text-amber-400' : 'text-muted'}`}>
                 {question.length} / 2000 chars
               </span>
             </div>
@@ -154,27 +194,47 @@ export default function SemanticSearchPage() {
               rows={3}
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="e.g. What is the difference between supervised and unsupervised learning algorithms?"
+              placeholder="e.g. What is the fundamental difference between dynamic programming and divide-and-conquer approaches?"
               maxLength={2000}
-              className="w-full p-4 rounded-xl input-base text-sm resize-y"
+              className="w-full p-4 rounded-2xl input-base text-sm resize-y font-sans leading-relaxed"
               required
             />
           </div>
 
+          {/* Quick suggestions if initial state */}
+          {!searchResponse && (
+            <div className="flex items-center gap-2 flex-wrap text-xs text-muted">
+              <span className="flex items-center gap-1 font-semibold text-heading text-[11px]">
+                <Lightbulb className="h-3.5 w-3.5 text-amber-400" />
+                Try searching:
+              </span>
+              {SUGGESTED_QUERIES.map((sq, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleApplySuggestion(sq)}
+                  className="px-2.5 py-1 rounded-lg card-base border border-subtle hover:border-indigo-500/40 text-muted hover:text-heading transition text-[11px] cursor-pointer"
+                >
+                  "{sq}"
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Filters Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-subtle">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-subtle">
             {/* Module Filter */}
             <div>
               <Select
                 id="search-module"
-                label={`Filter by Module ${isAdmin ? '(Optional)' : ''}`}
+                label={`Scope by Course ${isAdmin ? '(Optional)' : ''}`}
                 icon={BookOpen}
                 value={selectedModule}
                 onChange={(e) => setSelectedModule(e.target.value)}
                 disabled={loadingModules || modules.length === 0}
               >
                 <option value="">
-                  {isAdmin ? 'All Modules (Global Scope)' : 'All Enrolled Modules'}
+                  {isAdmin ? 'All Courses (Global Scope)' : 'All Enrolled Courses'}
                 </option>
                 {modules.map((m) => (
                   <option key={m._id} value={m._id}>
@@ -188,7 +248,7 @@ export default function SemanticSearchPage() {
             <div>
               <Select
                 id="search-document"
-                label="Filter by Document (Optional)"
+                label="Scope by Lecture Document (Optional)"
                 icon={FileText}
                 value={selectedDocument}
                 onChange={(e) => setSelectedDocument(e.target.value)}
@@ -196,10 +256,10 @@ export default function SemanticSearchPage() {
               >
                 <option value="">
                   {!selectedModule
-                    ? 'Select a module first'
+                    ? 'Select a course first'
                     : documents.length === 0
                     ? 'No documents found'
-                    : 'All Documents in Module'}
+                    : 'All Documents in Course'}
                 </option>
                 {documents.map((doc) => (
                   <option key={doc._id} value={doc._id}>
@@ -209,14 +269,14 @@ export default function SemanticSearchPage() {
               </Select>
             </div>
 
-            {/* Top-K Selector */}
+            {/* Top-K Slider */}
             <div>
               <label htmlFor="search-topk" className="block text-xs font-medium text-muted mb-1.5 flex items-center justify-between">
                 <span className="flex items-center gap-1">
-                  <Sliders className="h-3.5 w-3.5 text-indigo-500" />
-                  Top-K Results
+                  <Sliders className="h-3.5 w-3.5 text-indigo-400" />
+                  Top-K Passages
                 </span>
-                <span className="font-mono text-indigo-500 font-bold">{topK}</span>
+                <span className="font-mono text-indigo-400 font-bold">{topK}</span>
               </label>
               <input
                 type="range"
@@ -225,7 +285,7 @@ export default function SemanticSearchPage() {
                 max={20}
                 value={topK}
                 onChange={(e) => setTopK(parseInt(e.target.value, 10))}
-                className="w-full accent-indigo-600 cursor-pointer h-2 bg-subtle rounded-lg"
+                className="w-full accent-indigo-500 cursor-pointer h-2 bg-subtle rounded-lg mt-2"
               />
               <div className="flex justify-between text-[10px] text-muted mt-1">
                 <span>1 chunk</span>
@@ -237,39 +297,53 @@ export default function SemanticSearchPage() {
 
           {/* Error Message */}
           {error && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-500 text-xs flex items-center gap-2">
+            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-400 text-xs flex items-center gap-2 animate-fade-in">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {/* Submit Button */}
-          <div className="flex justify-end pt-2">
+          <div className="flex items-center justify-between pt-2 border-t border-subtle">
+            <span className="text-muted text-[11px]">
+              Retrieves dense vector chunks using cosine similarity
+            </span>
+
             <Button
               type="submit"
               variant="primary"
               size="md"
-              icon={Search}
+              icon={loading ? Loader2 : Search}
               disabled={loading || (!isAdmin && modules.length === 0)}
               loading={loading}
             >
-              {loading ? 'Searching Atlas Vector Index...' : 'Search Knowledge Base'}
+              {loading ? 'Searching Vector Index...' : 'Search Knowledge Base'}
             </Button>
           </div>
         </form>
       </Card>
 
+      {/* Loading Skeleton */}
+      {loading && !searchResponse && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="p-4 rounded-xl card-base border border-subtle flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-indigo-400" />
+            <span className="text-xs text-muted">Scanning MongoDB Atlas 768-dimensional vector index...</span>
+          </div>
+        </div>
+      )}
+
       {/* Retrieval Results Section */}
       {searchResponse && (
         <div className="space-y-6 animate-slide-up">
           {/* Results Summary Bar */}
-          <Card className="p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs text-muted shadow-sm">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-heading">
-                Found {searchResponse.count} relevant {searchResponse.count === 1 ? 'chunk' : 'chunks'}
+          <Card className="p-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted shadow-xs border border-subtle">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-heading">
+                Found {searchResponse.count} relevant {searchResponse.count === 1 ? 'passage' : 'passages'}
               </span>
               <span>for query</span>
-              <span className="text-indigo-500 italic max-w-xs sm:max-w-md truncate">
+              <span className="text-indigo-400 italic max-w-xs sm:max-w-md truncate">
                 "{searchResponse.question}"
               </span>
             </div>
@@ -279,83 +353,32 @@ export default function SemanticSearchPage() {
           </Card>
 
           {/* No Results Message */}
-          {searchResponse.results.length === 0 && (
+          {searchResponse.results.length === 0 ? (
             <EmptyState
               icon={Info}
-              title="No Matching Chunks Found"
-              description="No indexed chunks matched your search criteria. Ensure that documents have completed embeddings, or expand your search scope."
+              title="No Matching Lecture Chunks Found"
+              description="No indexed chunks matched your search criteria. Ensure that course documents have completed embeddings, or expand your search query."
             />
+          ) : (
+            /* Results List */
+            <div className="space-y-4">
+              {searchResponse.results.map((result, idx) => (
+                <SearchResultCard
+                  key={result.chunkId || idx}
+                  result={result}
+                  rank={idx + 1}
+                  query={searchResponse.question}
+                />
+              ))}
+            </div>
           )}
 
-          {/* Chunks List */}
-          <div className="space-y-4">
-            {searchResponse.results.map((result, idx) => (
-              <Card
-                key={result.chunkId}
-                className="p-5 hover:border-indigo-500/40 transition space-y-3 shadow-sm"
-              >
-                {/* Header: Score, Document, Module */}
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-md card-base text-heading font-mono text-[11px] font-semibold border border-subtle">
-                      #{idx + 1}
-                    </span>
-
-                    {result.moduleCode && (
-                      <Badge variant="indigo" size="xs">
-                        {result.moduleCode}
-                      </Badge>
-                    )}
-
-                    <span className="font-semibold text-heading flex items-center gap-1">
-                      <FileText className="h-3.5 w-3.5 text-muted" />
-                      {result.documentName}
-                    </span>
-
-                    <span className="text-muted text-[11px]">
-                      (Chunk #{result.chunkIndex})
-                    </span>
-                  </div>
-
-                  {/* Similarity Score */}
-                  <Badge variant="emerald" size="xs">
-                    Relevance: {typeof result.score === 'number' ? result.score.toFixed(4) : result.score}
-                  </Badge>
-                </div>
-
-                {/* Metadata details */}
-                <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted border-b border-subtle pb-2">
-                  {result.metadata?.pageStart && (
-                    <span>
-                      Pages: {result.metadata.pageStart}
-                      {result.metadata.pageEnd && result.metadata.pageEnd !== result.metadata.pageStart
-                        ? `–${result.metadata.pageEnd}`
-                        : ''}
-                    </span>
-                  )}
-                  {result.metadata?.sectionHeading && (
-                    <span>Section: {result.metadata.sectionHeading}</span>
-                  )}
-                  <span>Characters: {result.characterCount}</span>
-                  <span>Tokens: ~{result.tokenCount}</span>
-                </div>
-
-                {/* Chunk Text Passage */}
-                <div className="card-base rounded-xl p-4 border border-subtle">
-                  <p className="text-xs sm:text-sm text-body leading-relaxed font-sans whitespace-pre-wrap">
-                    {result.text}
-                  </p>
-                </div>
-              </Card>
-            ))}
-          </div>
-
-          {/* Scope Note */}
-          <div className="p-4 rounded-xl card-base border border-indigo-500/30 text-xs text-body flex items-start gap-2.5 shadow-sm">
-            <Info className="h-4 w-4 shrink-0 text-indigo-500 mt-0.5" />
-            <div>
-              <span className="font-semibold text-heading">Grounded Retrieval Scope: </span>
-              These retrieved chunks represent the exact grounded context that is injected into Gemini prompts during Study Assistant and Exam Generation for accurate answer synthesis and citations.
+          {/* Grounding Scope Footer Notice */}
+          <div className="p-4 rounded-2xl card-base border border-indigo-500/25 text-xs text-body flex items-start gap-3 shadow-xs">
+            <Info className="h-4 w-4 shrink-0 text-indigo-400 mt-0.5" />
+            <div className="leading-relaxed">
+              <span className="font-bold text-heading">Grounded Retrieval Scope: </span>
+              These retrieved passages represent the exact grounded context that is injected into Gemini prompts during Study Assistant conversations and Exam Question generation.
             </div>
           </div>
         </div>

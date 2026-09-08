@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   FileText,
   Sparkles,
@@ -37,11 +38,16 @@ import {
 
 export default function LectureSummariesPage() {
   const { user, isAdmin } = useAuth();
+  const [searchParams] = useSearchParams();
 
   const [modules, setModules] = useState([]);
-  const [selectedModule, setSelectedModule] = useState('');
+  const [selectedModule, setSelectedModule] = useState(
+    searchParams.get('module') || searchParams.get('moduleId') || ''
+  );
   const [documents, setDocuments] = useState([]);
-  const [selectedDocument, setSelectedDocument] = useState('');
+  const [selectedDocument, setSelectedDocument] = useState(
+    searchParams.get('document') || searchParams.get('documentId') || ''
+  );
 
   const [summary, setSummary] = useState(null);
   const [checkingExisting, setCheckingExisting] = useState(false);
@@ -90,7 +96,10 @@ export default function LectureSummariesPage() {
       try {
         const docs = await documentService.getDocuments(selectedModule);
         setDocuments(docs || []);
-        if (docs && docs.length > 0) {
+        const paramDoc = searchParams.get('document') || searchParams.get('documentId');
+        if (paramDoc && docs && docs.some((d) => d._id === paramDoc)) {
+          setSelectedDocument(paramDoc);
+        } else if (docs && docs.length > 0) {
           setSelectedDocument(docs[0]._id);
         } else {
           setSelectedDocument('');
@@ -103,7 +112,7 @@ export default function LectureSummariesPage() {
     };
 
     fetchDocuments();
-  }, [selectedModule]);
+  }, [selectedModule, searchParams]);
 
   // 3. Check for existing summary when document changes
   useEffect(() => {

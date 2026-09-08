@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Award,
   BookOpen,
@@ -39,15 +39,20 @@ export default function QuizPage() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const { quizId } = useParams();
+  const [searchParams] = useSearchParams();
 
   // Mode: 'configure' | 'active'
   const [mode, setMode] = useState('configure');
 
   // Configuration state
   const [modules, setModules] = useState([]);
-  const [selectedModule, setSelectedModule] = useState('');
+  const [selectedModule, setSelectedModule] = useState(
+    searchParams.get('module') || searchParams.get('moduleId') || ''
+  );
   const [documents, setDocuments] = useState([]);
-  const [selectedDocument, setSelectedDocument] = useState('');
+  const [selectedDocument, setSelectedDocument] = useState(
+    searchParams.get('document') || searchParams.get('documentId') || ''
+  );
   const [questionType, setQuestionType] = useState('ALL');
   const [difficulty, setDifficulty] = useState('ALL');
   const [count, setCount] = useState(5);
@@ -110,6 +115,10 @@ export default function QuizPage() {
       try {
         const docs = await documentService.getDocuments(selectedModule);
         setDocuments(docs || []);
+        const paramDoc = searchParams.get('document') || searchParams.get('documentId');
+        if (paramDoc && docs && docs.some((d) => d._id === paramDoc)) {
+          setSelectedDocument(paramDoc);
+        }
       } catch (err) {
         console.error('Failed to load module documents:', err);
       } finally {
@@ -118,7 +127,7 @@ export default function QuizPage() {
     };
 
     fetchDocs();
-  }, [selectedModule]);
+  }, [selectedModule, searchParams]);
 
   // 3. Check available questions count in Question Bank
   useEffect(() => {
