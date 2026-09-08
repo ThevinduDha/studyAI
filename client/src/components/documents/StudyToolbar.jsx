@@ -72,10 +72,12 @@ export function StudyToolbar({
     }
   ];
 
+  const displayedActions = variant === 'compact' ? actions.filter((a) => a.id !== 'search') : actions;
+
   if (variant === 'compact') {
     return (
       <div className={`flex items-center gap-1.5 flex-wrap ${className}`}>
-        {actions.map((act) => {
+        {displayedActions.map((act) => {
           const Icon = act.icon;
           return (
             <Button

@@ -8,6 +8,8 @@ import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import ModulesPage from './pages/ModulesPage.jsx';
 import AdminModulesPage from './pages/AdminModulesPage.jsx';
+import AdminDashboardPage from './pages/AdminDashboardPage.jsx';
+import AdminDocumentsPage from './pages/AdminDocumentsPage.jsx';
 import SemanticSearchPage from './pages/SemanticSearchPage.jsx';
 import StudyAssistantPage from './pages/StudyAssistantPage.jsx';
 import LectureSummariesPage from './pages/LectureSummariesPage.jsx';
@@ -20,9 +22,10 @@ import Phase1OverviewPage from './pages/Phase1OverviewPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 
 function RootRedirect() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
   if (loading) return null;
-  return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <Navigate to={user?.role === 'admin' ? "/admin" : "/dashboard"} replace />;
 }
 
 function PublicLayout({ children }) {
@@ -177,10 +180,26 @@ export default function App() {
 
             {/* Protected Admin Only Routes */}
             <Route
+              path="/admin"
+              element={
+                <ProtectedRoute adminOnly={true}>
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/modules"
               element={
                 <ProtectedRoute adminOnly={true}>
                   <AdminModulesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/documents"
+              element={
+                <ProtectedRoute adminOnly={true}>
+                  <AdminDocumentsPage />
                 </ProtectedRoute>
               }
             />

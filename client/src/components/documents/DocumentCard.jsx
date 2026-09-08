@@ -91,12 +91,12 @@ export function DocumentCard({
             <div className="flex items-center gap-2 text-[11px] text-muted mt-1 flex-wrap">
               <span>{formatFileSize(document.fileSize)}</span>
               {document.pageCount > 0 && <span>&bull; {document.pageCount} pages</span>}
-              {document.chunkCount !== undefined && document.chunkCount > 0 && (
+              {canManage && document.chunkCount !== undefined && document.chunkCount > 0 && (
                 <span className="text-indigo-400 font-medium">
                   &bull; {document.chunkCount} chunks
                 </span>
               )}
-              {document.embeddedChunkCount !== undefined && document.embeddedChunkCount > 0 && (
+              {canManage && document.embeddedChunkCount !== undefined && document.embeddedChunkCount > 0 && (
                 <span className="text-purple-400 font-medium">
                   &bull; {document.embeddedChunkCount} embedded (768d)
                 </span>
@@ -141,7 +141,7 @@ export function DocumentCard({
             </Button>
           )}
 
-          {isProcessed && onInspectChunks && (
+          {canManage && isProcessed && onInspectChunks && (
             <Button
               variant="outline"
               size="xs"

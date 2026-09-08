@@ -14,7 +14,7 @@ export const analyticsService = {
   getOverview: async (studentId) => {
     const url = studentId ? `/analytics/overview?studentId=${studentId}` : '/analytics/overview';
     const response = await api.get(url);
-    return response.data;
+    return response;
   },
 
   /**
@@ -24,7 +24,7 @@ export const analyticsService = {
    */
   getModuleAnalytics: async (moduleId) => {
     const response = await api.get(`/analytics/module/${moduleId}`);
-    return response.data;
+    return response;
   },
 
   /**
@@ -34,7 +34,7 @@ export const analyticsService = {
    */
   getTopicAnalytics: async (topic) => {
     const response = await api.get(`/analytics/topic/${encodeURIComponent(topic)}`);
-    return response.data;
+    return response;
   },
 
   /**
@@ -44,7 +44,7 @@ export const analyticsService = {
    */
   getAIInsight: async (summaryData) => {
     const response = await api.post('/analytics/ai-insight', { summaryData });
-    return response.data;
+    return response;
   }
 };
 

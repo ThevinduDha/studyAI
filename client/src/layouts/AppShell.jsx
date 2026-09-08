@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import ThemeToggle from '../components/ThemeToggle.jsx';
+import { FloatingAIChatbot } from '../components/ai/FloatingAIChatbot.jsx';
 
 export default function AppShell({ children }) {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
@@ -86,56 +87,36 @@ export default function AppShell({ children }) {
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
-  // Grouped Navigation Structure
-  const navSections = [
-    {
-      title: 'Overview',
-      items: [
-        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard }
+  // Differentiated Student vs Admin Navigation Structure
+  const navSections = isAdmin
+    ? [
+        {
+          title: 'Admin Management',
+          items: [
+            { label: 'Admin Home', path: '/admin', icon: LayoutDashboard },
+            { label: 'Courses', path: '/admin/modules', icon: BookOpen },
+            { label: 'Documents', path: '/admin/documents', icon: FileText }
+          ]
+        },
+        {
+          title: 'System',
+          items: [
+            { label: 'System Status', path: '/system-status', icon: Activity }
+          ]
+        }
       ]
-    },
-    {
-      title: 'Learning',
-      items: [
-        { label: 'Course Modules', path: '/modules', icon: BookOpen },
-        { label: 'Study Assistant', path: '/assistant', icon: Sparkles },
-        { label: 'Lecture Summaries', path: '/summaries', icon: FileText }
-      ]
-    },
-    {
-      title: 'Practice & Testing',
-      items: [
-        { label: 'Exam Questions', path: '/questions', icon: HelpCircle },
-        { label: 'AI Quiz', path: '/quizzes', icon: Award },
-        { label: 'Quiz History', path: '/quiz-history', icon: Clock }
-      ]
-    },
-    {
-      title: 'Intelligence',
-      items: [
-        { label: 'Analytics', path: '/analytics', icon: BarChart2, badge: 'New' },
-        { label: 'Knowledge Search', path: '/search', icon: Search }
-      ]
-    }
-  ];
-
-  // Admin Section
-  if (isAdmin) {
-    navSections.push({
-      title: 'Management',
-      items: [
-        { label: 'Module Admin', path: '/admin/modules', icon: Shield }
-      ]
-    });
-  }
-
-  // System Section
-  navSections.push({
-    title: 'System',
-    items: [
-      { label: 'System Status', path: '/system-status', icon: Activity }
-    ]
-  });
+    : [
+        {
+          title: 'Study Hub',
+          items: [
+            { label: 'Home', path: '/dashboard', icon: LayoutDashboard },
+            { label: 'Courses', path: '/modules', icon: BookOpen },
+            { label: 'AI Tutor', path: '/assistant', icon: Sparkles },
+            { label: 'Practice & Quizzes', path: '/quizzes', icon: Award },
+            { label: 'Your Progress', path: '/analytics', icon: BarChart2 }
+          ]
+        }
+      ];
 
   // Determine current page title for breadcrumbs
   const getCurrentPageTitle = () => {
@@ -456,6 +437,9 @@ export default function AppShell({ children }) {
           </footer>
         </div>
       </div>
+
+      {/* Floating AI Chatbot for Authenticated Students */}
+      {user?.role === 'student' && <FloatingAIChatbot />}
     </div>
   );
 }
