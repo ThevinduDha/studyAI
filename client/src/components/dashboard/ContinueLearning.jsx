@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   BookOpen,
   FileText,
@@ -15,6 +15,8 @@ import { Badge } from '../ui/Badge.jsx';
 import { EmptyState } from '../ui/EmptyState.jsx';
 
 export default function ContinueLearning({ enrolledModules = [] }) {
+  const navigate = useNavigate();
+
   if (!enrolledModules || enrolledModules.length === 0) {
     return (
       <Card className="p-6 shadow-sm">
@@ -23,7 +25,7 @@ export default function ContinueLearning({ enrolledModules = [] }) {
           title="No Course Modules Enrolled"
           description="Enroll in university modules to unlock grounded AI question answering, exam preparation sets, and lecture summaries."
           actionLabel="Browse Course Modules"
-          onAction={() => window.location.assign('/modules')}
+          onAction={() => navigate('/modules')}
         />
       </Card>
     );

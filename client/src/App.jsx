@@ -64,22 +64,8 @@ export default function App() {
             <Route path="/" element={<RootRedirect />} />
 
             {/* Public Auth Routes */}
-            <Route
-              path="/login"
-              element={
-                <PublicLayout>
-                  <LoginPage />
-                </PublicLayout>
-              }
-            />
-            <Route
-              path="/register"
-              element={
-                <PublicLayout>
-                  <RegisterPage />
-                </PublicLayout>
-              }
-            />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
             {/* Protected Student / Shared Routes (wrapped in AppShell via ProtectedRoute) */}
             <Route
