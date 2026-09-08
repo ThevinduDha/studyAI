@@ -25,6 +25,7 @@ import { Input } from '../components/ui/Input.jsx';
 import { Select } from '../components/ui/Select.jsx';
 import { Modal } from '../components/ui/Modal.jsx';
 import { EmptyState } from '../components/ui/EmptyState.jsx';
+import { SkeletonGrid } from '../components/ui/Skeleton.jsx';
 
 export default function AdminModulesPage() {
   const [modules, setModules] = useState([]);
@@ -258,10 +259,7 @@ export default function AdminModulesPage() {
 
       {/* Module Table */}
       {loading ? (
-        <div className="py-20 flex flex-col items-center justify-center text-muted">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mb-3" />
-          <span className="text-xs">Querying module registry...</span>
-        </div>
+        <SkeletonGrid count={6} />
       ) : modules.length === 0 ? (
         <EmptyState
           icon={BookOpen}

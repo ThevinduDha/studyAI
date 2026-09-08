@@ -201,7 +201,7 @@ export default function StudyAssistantPage() {
   const selectedDocObj = documents.find((d) => d._id === selectedDocument);
 
   return (
-    <div className="max-w-5xl mx-auto flex flex-col h-[calc(100vh-8rem)] animate-fade-in">
+    <div className="max-w-5xl mx-auto flex flex-col h-[calc(100vh-12rem)] min-h-[520px] animate-fade-in">
       {/* Header Bar */}
       <div className="shrink-0 pb-3 border-b border-subtle">
         <PageHeader

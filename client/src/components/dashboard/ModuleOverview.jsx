@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   BookOpen,
   FileText,
@@ -13,6 +13,7 @@ import { Button } from '../ui/Button.jsx';
 import { EmptyState } from '../ui/EmptyState.jsx';
 
 export default function ModuleOverview({ enrolledModules = [] }) {
+  const navigate = useNavigate();
   const hasModules = Array.isArray(enrolledModules) && enrolledModules.length > 0;
 
   return (
@@ -40,7 +41,7 @@ export default function ModuleOverview({ enrolledModules = [] }) {
             title="No Modules Enrolled"
             description="You are not enrolled in any university courses yet. Enroll in courses to access lecture materials and AI study tools."
             actionLabel="Browse Course Catalog"
-            onAction={() => window.location.assign('/modules')}
+            onAction={() => navigate('/modules')}
           />
         </Card>
       ) : (

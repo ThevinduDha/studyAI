@@ -38,10 +38,28 @@ export default function AppShell({ children }) {
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Close mobile drawer on route change
+  // Close mobile drawer on route change, Escape key, and lock body scroll
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && mobileOpen) {
+        setMobileOpen(false);
+      }
+    };
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mobileOpen]);
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -65,7 +83,7 @@ export default function AppShell({ children }) {
     if (path === '/dashboard') {
       return location.pathname === '/dashboard' || location.pathname === '/';
     }
-    return location.pathname === path;
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
   // Grouped Navigation Structure
@@ -125,6 +143,12 @@ export default function AppShell({ children }) {
       for (const item of section.items) {
         if (isActive(item.path)) return { section: section.title, title: item.label };
       }
+    }
+    if (location.pathname.startsWith('/quiz-results')) {
+      return { section: 'Practice & Testing', title: 'Quiz Results' };
+    }
+    if (location.pathname.startsWith('/admin')) {
+      return { section: 'Management', title: 'Module Admin' };
     }
     return { section: 'Platform', title: 'StudyAI' };
   };
@@ -411,7 +435,7 @@ export default function AppShell({ children }) {
           </header>
 
           {/* Main Content Viewport */}
-          <main className="flex-1 animate-fade-in">
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in min-w-0">
             {children}
           </main>
 
