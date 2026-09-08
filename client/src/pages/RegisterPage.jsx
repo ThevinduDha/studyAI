@@ -16,6 +16,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('student');
+  const [adminPasscode, setAdminPasscode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -44,10 +45,21 @@ export default function RegisterPage() {
       return;
     }
 
+    if (role === 'admin' && !adminPasscode.trim()) {
+      setError('An administrative authorization key is required to register an administrator account.');
+      return;
+    }
+
     setLoading(true);
     try {
-      await register({ name: trimmedName, email: trimmedEmail, password, role });
-      navigate('/dashboard', { replace: true });
+      const registeredUser = await register({
+        name: trimmedName,
+        email: trimmedEmail,
+        password,
+        role,
+        adminPasscode: role === 'admin' ? adminPasscode.trim() : undefined
+      });
+      navigate(registeredUser?.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
     } catch (err) {
       console.error('Registration failure:', err);
       setError(err.message || 'Registration failed. Please check your information or try again.');
@@ -156,6 +168,28 @@ export default function RegisterPage() {
               </span>
             </button>
           </div>
+
+          {/* Administrative Authorization Key Field */}
+          {role === 'admin' && (
+            <div className="mt-3 p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/30 space-y-2 animate-fade-in">
+              <div className="flex items-center gap-2 text-xs font-bold text-purple-400">
+                <ShieldCheck className="h-4 w-4" />
+                <span>Administrative Authorization Required</span>
+              </div>
+              <p className="text-[11px] text-muted leading-relaxed">
+                Enter your institutional authorization passkey to create an administrator account.
+              </p>
+              <Input
+                id="register-admin-passcode"
+                type="password"
+                label="Admin Passkey"
+                value={adminPasscode}
+                onChange={(e) => setAdminPasscode(e.target.value)}
+                placeholder="Enter admin registration passkey"
+                required
+              />
+            </div>
+          )}
         </div>
 
         {/* Submit Button */}

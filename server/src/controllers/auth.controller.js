@@ -7,7 +7,7 @@ import * as authService from '../services/auth.service.js';
  */
 export const register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, adminPasscode } = req.body;
 
     // Field validations
     if (!name || name.trim() === '') {
@@ -44,7 +44,8 @@ export const register = async (req, res, next) => {
       name,
       email,
       password,
-      role
+      role,
+      adminPasscode
     });
 
     return res.status(201).json({

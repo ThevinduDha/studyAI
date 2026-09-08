@@ -6,7 +6,7 @@ import { generateToken } from '../utils/jwt.js';
  * @param {Object} userData - { name, email, password, role }
  * @returns {Object} { user, token }
  */
-export const registerUser = async ({ name, email, password, role }) => {
+export const registerUser = async ({ name, email, password, role, adminPasscode }) => {
   // Check if user already exists
   const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
   if (existingUser) {
@@ -16,12 +16,25 @@ export const registerUser = async ({ name, email, password, role }) => {
     throw error;
   }
 
+  // Secure role resolution: Public registration cannot arbitrarily escalate to admin
+  let userRole = 'student';
+  if (role === 'admin') {
+    const expectedAdminKey = process.env.ADMIN_REGISTRATION_KEY || 'studyai-admin-secret-2026';
+    if (!adminPasscode || typeof adminPasscode !== 'string' || adminPasscode.trim() !== expectedAdminKey) {
+      const error = new Error('Unauthorized: A valid administrator registration key is required to register an administrator account.');
+      error.statusCode = 403;
+      error.code = 'UNAUTHORIZED_ADMIN_REGISTRATION';
+      throw error;
+    }
+    userRole = 'admin';
+  }
+
   // Create user record
   const user = await User.create({
     name: name.trim(),
     email: email.toLowerCase().trim(),
     password,
-    role: role === 'admin' ? 'admin' : 'student'
+    role: userRole
   });
 
   const token = generateToken({

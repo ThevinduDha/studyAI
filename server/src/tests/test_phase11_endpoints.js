@@ -195,7 +195,8 @@ async function runTests() {
       name: 'P11 Admin',
       email: 'admin@phase11test.com',
       password: 'Password123!',
-      role: 'admin'
+      role: 'admin',
+      adminPasscode: process.env.ADMIN_REGISTRATION_KEY || 'studyai-admin-secret-2026'
     }));
     adminToken = resAdminReg.data.data.token;
     adminUser = resAdminReg.data.data.user;

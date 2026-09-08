@@ -34,11 +34,12 @@ import { Input } from '../components/ui/Input.jsx';
 import { Modal } from '../components/ui/Modal.jsx';
 import { GroundedBadge } from '../components/ai/index.js';
 import { QuizQuestionNavigator } from '../components/quiz/index.js';
+import { SkeletonCard } from '../components/ui/Skeleton.jsx';
 
 export default function QuizPage() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const { quizId } = useParams();
+  const { quizId, attemptId } = useParams();
   const [searchParams] = useSearchParams();
 
   // Mode: 'configure' | 'active'
@@ -176,6 +177,102 @@ export default function QuizPage() {
     };
   }, [mode, currentAttempt]);
 
+  // 5. Handle route parameter attemptId (resuming an in-progress attempt)
+  useEffect(() => {
+    if (!attemptId) return;
+
+    const loadAttempt = async () => {
+      setStarting(true);
+      setError('');
+      try {
+        const data = await quizService.getAttempt(attemptId);
+        if (data?.attempt?.status === 'completed') {
+          navigate(`/quiz-results/${attemptId}`, { replace: true });
+          return;
+        }
+        if (data?.attempt && data.attempt.status === 'in_progress') {
+          setCurrentAttempt(data.attempt);
+          setActiveQuiz(data.attempt.quiz);
+          setQuestions(data.questions || []);
+
+          if (Array.isArray(data.attempt.answers)) {
+            const restoredAnswers = {};
+            data.attempt.answers.forEach((ans) => {
+              const qId = ans.question?._id || ans.question;
+              if (qId && ans.selectedAnswer) {
+                restoredAnswers[qId] = ans.selectedAnswer;
+              }
+            });
+            setSelectedAnswers(restoredAnswers);
+          }
+
+          if (data.attempt.startedAt) {
+            const elapsed = Math.max(0, Math.floor((Date.now() - new Date(data.attempt.startedAt).getTime()) / 1000));
+            setElapsedSeconds(elapsed);
+          }
+
+          setCurrentIndex(0);
+          setMode('active');
+        } else {
+          setError('This quiz attempt is no longer active.');
+        }
+      } catch (err) {
+        console.error('Failed to load quiz attempt:', err);
+        setError(err.response?.data?.error?.message || err.message || 'Failed to load attempt.');
+      } finally {
+        setStarting(false);
+      }
+    };
+
+    loadAttempt();
+  }, [attemptId, navigate]);
+
+  // 6. Handle route parameter quizId (starting or resuming via quizId)
+  useEffect(() => {
+    if (!quizId || attemptId) return;
+
+    const initQuiz = async () => {
+      setStarting(true);
+      setError('');
+      try {
+        const startRes = await quizService.startQuiz(quizId);
+        if (startRes?.attempt?.status === 'completed') {
+          navigate(`/quiz-results/${startRes.attempt._id}`, { replace: true });
+          return;
+        }
+        setActiveQuiz(startRes.quiz || { _id: quizId });
+        setCurrentAttempt(startRes.attempt);
+        setQuestions(startRes.questions || []);
+
+        if (Array.isArray(startRes.attempt?.answers)) {
+          const restoredAnswers = {};
+          startRes.attempt.answers.forEach((ans) => {
+            const qId = ans.question?._id || ans.question;
+            if (qId && ans.selectedAnswer) {
+              restoredAnswers[qId] = ans.selectedAnswer;
+            }
+          });
+          setSelectedAnswers(restoredAnswers);
+        }
+
+        if (startRes.attempt?.startedAt) {
+          const elapsed = Math.max(0, Math.floor((Date.now() - new Date(startRes.attempt.startedAt).getTime()) / 1000));
+          setElapsedSeconds(elapsed);
+        }
+
+        setCurrentIndex(0);
+        setMode('active');
+      } catch (err) {
+        console.error('Failed to initialize quiz:', err);
+        setError(err.response?.data?.error?.message || err.message || 'Failed to initialize quiz.');
+      } finally {
+        setStarting(false);
+      }
+    };
+
+    initQuiz();
+  }, [quizId, attemptId, navigate]);
+
   // Handle Start Quiz
   const handleStartQuiz = async (e) => {
     if (e) e.preventDefault();
@@ -271,6 +368,15 @@ export default function QuizPage() {
   const answeredCount = Object.keys(selectedAnswers).filter((k) => selectedAnswers[k]?.trim().length > 0).length;
   const progressPercent = questions.length > 0 ? Math.round(((currentIndex + 1) / questions.length) * 100) : 0;
   const selectedModuleObj = modules.find((m) => m._id === selectedModule);
+
+  if (starting && (attemptId || quizId)) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-12">
+        <SkeletonCard className="h-56" />
+        <SkeletonCard className="h-40" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-12">

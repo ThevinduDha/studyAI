@@ -293,6 +293,7 @@ export default function QuizHistoryPage() {
         <div className="space-y-3.5">
           {filteredAttempts.map((att) => {
             const isCompleted = att.status === 'completed';
+            const isInProgress = att.status === 'in_progress';
             const isAbandoned = att.status === 'abandoned';
             const percent = Math.round(att.percentage || 0);
             const isHighScore = percent >= 70;
@@ -301,12 +302,13 @@ export default function QuizHistoryPage() {
             return (
               <Card
                 key={att._id}
-                hoverable={isCompleted}
+                hoverable={isCompleted || isInProgress}
                 onClick={() => {
                   if (isCompleted) navigate(`/quiz-results/${att._id}`);
+                  else if (isInProgress) navigate(`/quizzes/attempt/${att._id}`);
                 }}
                 className={`p-5 transition-all duration-150 flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-xs border border-subtle ${
-                  isCompleted ? 'cursor-pointer hover:border-indigo-500/40 hover:-translate-y-0.5' : ''
+                  isCompleted || isInProgress ? 'cursor-pointer hover:border-indigo-500/40 hover:-translate-y-0.5' : ''
                 }`}
               >
                 {/* Left metadata info */}
@@ -368,12 +370,25 @@ export default function QuizHistoryPage() {
                       Abandoned
                     </Badge>
                   ) : (
-                    <Badge variant="amber" size="sm">
-                      In Progress
-                    </Badge>
+                    <div className="flex items-center gap-2.5">
+                      <Badge variant="amber" size="sm">
+                        In Progress
+                      </Badge>
+                      <Button
+                        variant="primary"
+                        size="xs"
+                        icon={RotateCw}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/quizzes/attempt/${att._id}`);
+                        }}
+                      >
+                        Resume
+                      </Button>
+                    </div>
                   )}
 
-                  {isCompleted && (
+                  {(isCompleted || isInProgress) && (
                     <div className="p-2 rounded-xl card-base text-muted hover:text-heading transition border border-subtle shrink-0">
                       <ChevronRight className="h-4 w-4" />
                     </div>
