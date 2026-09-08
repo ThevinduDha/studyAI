@@ -10,6 +10,9 @@ const ThemeContext = createContext({
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
     try {
+      const params = new URLSearchParams(window.location.search);
+      const urlTheme = params.get('theme');
+      if (urlTheme === 'light' || urlTheme === 'dark') return urlTheme;
       const saved = localStorage.getItem('studyai-theme');
       if (saved === 'light' || saved === 'dark') return saved;
       return 'dark'; // Default to dark SaaS aesthetic

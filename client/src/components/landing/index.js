@@ -1,0 +1,12 @@
+export { default as LandingNavbar } from './LandingNavbar.jsx';
+export { default as HeroSection } from './HeroSection.jsx';
+export { default as HeroStudyMockup } from './HeroStudyMockup.jsx';
+export { default as ValueStrip } from './ValueStrip.jsx';
+export { default as FeaturesSection } from './FeaturesSection.jsx';
+export { default as HowItWorks } from './HowItWorks.jsx';
+export { default as AITutorShowcase } from './AITutorShowcase.jsx';
+export { default as StudyWorkflow } from './StudyWorkflow.jsx';
+export { default as AnalyticsShowcase } from './AnalyticsShowcase.jsx';
+export { default as WhyStudyAI } from './WhyStudyAI.jsx';
+export { default as FinalCTA } from './FinalCTA.jsx';
+export { default as LandingFooter } from './LandingFooter.jsx';

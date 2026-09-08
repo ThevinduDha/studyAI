@@ -20,6 +20,7 @@ import QuizHistoryPage from './pages/QuizHistoryPage.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import Phase1OverviewPage from './pages/Phase1OverviewPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
+import LandingPage from './pages/LandingPage.jsx';
 
 function RootRedirect() {
   const { isAuthenticated, user, loading } = useAuth();
@@ -63,8 +64,8 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <Routes>
-            {/* Root redirect */}
-            <Route path="/" element={<RootRedirect />} />
+            {/* Public Landing Page */}
+            <Route path="/" element={<LandingPage />} />
 
             {/* Public Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
